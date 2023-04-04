@@ -11,7 +11,8 @@ fn start(){
     println!("Set your manager password : ");
     std::io::stdin().read_line(&mut pass).unwrap();
     println!("pass as bytes : {:?}", pass.as_bytes());
-    let changed = pass::change_pass(pass.as_bytes());
+    let mut changed = pass::change_pass(pass.as_bytes());
     println!("your new pass : {:?}", changed);
-    println!("pass len : {}", changed.len())
+    println!("pass len : {}", changed.len());
+    println!("decode reverse : {:?}", pass::change_pass_to(changed));
 }
