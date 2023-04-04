@@ -1,3 +1,5 @@
+use sha2::{Digest , Sha256};
+
 pub fn change_pass(pass : &[u8]) -> Vec<u8>{
     let mut hh: Vec<u8> = vec![0];
     let len = pass.len() + 1;
@@ -25,6 +27,11 @@ pub fn change_pass_to(mut changed_pass : Vec<u8>) -> Vec<u8>{
     let new = changed_pass.split_at_mut(nigofall).0;
     let mut nn = Vec::from(new);
     nn.remove(nn.len() - 1);
-    println!("new : {:?}", nn);
     return nn;
+}
+pub fn get_key_from_pass(pass : &[u8]) -> &[u8]{
+    let mut nn = Sha256::new();
+    nn.update(pass);
+    let fin = nn.finalize().as_slice();
+    return fin;
 }
