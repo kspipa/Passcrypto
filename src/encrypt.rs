@@ -11,6 +11,13 @@ pub fn encrypt_data<'a>(data : &[u8], key : &'a [u8]) -> Vec<u8>{
     cipher.encrypt_block(sdasd.into());
     return sdasd.to_vec();
 }
+pub fn decrypt_data(data : &[u8], key : &[u8]) -> Vec<u8>{
+    let cipher = Aes256::new(key.into());
+    let mut nn = data.to_vec();
+    let sdasd: &mut [u8] = nn.as_mut();
+    cipher.decrypt_block(sdasd.into());
+    return sdasd.to_vec();
+}
 pub fn spilt_into_bloks(list : &[u8]) -> Vec<&[u8]>{
     let mut vect = vec!["0".as_bytes()];
     if list.len() > 16{
