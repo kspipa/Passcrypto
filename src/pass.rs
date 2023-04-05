@@ -29,9 +29,11 @@ pub fn change_pass_to(mut changed_pass : Vec<u8>) -> Vec<u8>{
     nn.remove(nn.len() - 1);
     return nn;
 }
-pub fn get_key_from_pass(pass : &[u8]) -> &[u8]{
+pub fn get_key_from_pass(pass : &[u8]) -> Vec<u8>{
     let mut nn = Sha256::new();
     nn.update(pass);
-    let fin = nn.finalize().as_slice();
-    return fin;
+    let binding = nn.finalize();
+    let fin = binding.as_slice();
+    let vrc = Vec::from(fin);
+    return vrc;
 }

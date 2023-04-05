@@ -1,3 +1,4 @@
+
 mod encrypt;
 mod pass;
 fn main(){
@@ -11,7 +12,13 @@ fn start(){
     std::io::stdin().read_line(&mut pass).unwrap();
     let mm = pass.as_bytes();
     println!("norm pass : {:?}", mm);
-    let encrypt = pass::change_pass(mm);
-    let nnn = encrypt.as_slice();
-    encrypt::encrypt_data(nnn, pass::change_pass("dasd".as_bytes()).as_slice());
+    let binding = pass::change_pass(&mm.to_vec());
+    let mut d = Vec::from(["0".as_bytes()]); 
+    d = encrypt::spilt_into_bloks(binding.as_slice());
+    println!("split into blocks : {:?}", d);
+    let biding = pass::get_key_from_pass("12345reqewqewq".as_bytes());
+    let key = biding.as_slice();
+    for i in d{
+        encrypt::encrypt_data(i, key);
+    }
 }
