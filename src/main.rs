@@ -3,9 +3,8 @@ mod encrypt;
 mod pass;
 mod file;
 fn main(){
-    if std::fs::read_to_string("src/check").unwrap() == "TRUE"{
-        start();
-    }
+    let t = "TRUE".as_bytes();
+    let l = file::read_from("src/check".to_string());
 }
 fn start(){
     let mut pass = String::new();
@@ -13,7 +12,12 @@ fn start(){
     std::io::stdin().read_line(&mut pass).unwrap();
     let mm = pass.as_bytes();
     let key = pass::get_key_from_pass(mm);
-    
+    let binding = pass::change_pass("TRUE".as_bytes());
+    println!("Not encrypted data : {:?}", binding);
+    let encrypt_data_check_file = vec![encrypt::encrypt_data(binding.as_slice(), &key)];
+    let sin = encrypt_data_check_file.clone();
+    file::write_into(encrypt_data_check_file, "src/check.check".to_string());
+    println!("{:?} : writed in file", sin[0]);
     get_comapass(key);
 }
 
@@ -32,4 +36,7 @@ fn get_comapass(nkey : Vec<u8>) -> Vec<Vec<u8>>{
         nvec.push(encrypt::encrypt_data(i, nkey.as_slice()));
     }
     return nvec;
+}
+fn thaloop(){
+    
 }
