@@ -3,24 +3,18 @@ mod encrypt;
 mod pass;
 mod file;
 fn main(){
-    let t = "TRUE".as_bytes();
-    let l = file::read_from("src/check".to_string());
 }
 fn start(){
-    let mut pass = String::new();
-    println!("Set your manager password : ");
-    std::io::stdin().read_line(&mut pass).unwrap();
-    let mm = pass.as_bytes();
-    let key = pass::get_key_from_pass(mm);
-    let binding = pass::change_pass("TRUE".as_bytes());
-    println!("Not encrypted data : {:?}", binding);
-    let encrypt_data_check_file = vec![encrypt::encrypt_data(binding.as_slice(), &key)];
-    let sin = encrypt_data_check_file.clone();
-    file::write_into(encrypt_data_check_file, "src/check.check".to_string());
-    println!("{:?} : writed in file", sin[0]);
-    get_comapass(key);
+    let key = get_first_pass();
 }
-
+fn get_first_pass() -> Vec<u8>{
+    let mut pass = String::new();
+    println!("Set your first master password");
+    std::io::stdin().read_line(&mut pass).unwrap();
+    let key = pass::get_key_from_pass(pass.as_bytes());
+    file::create_new("passs/0.ps".to_string());
+    return key;
+}
 fn get_comapass(nkey : Vec<u8>) -> Vec<Vec<u8>>{
     println!("Type your new pass");
     let mut pass = String::new();
@@ -37,6 +31,9 @@ fn get_comapass(nkey : Vec<u8>) -> Vec<Vec<u8>>{
     }
     return nvec;
 }
-fn thaloop(){
-    
+fn menu(){
+    let key = get_first_pass();
+    println!("Ok, what do you want to do : \n    1. Write new password \n    2. Quit \nSet number");
+    let mut num = String::new();
+    std::io::stdin().read_line(&mut num).unwrap();
 }

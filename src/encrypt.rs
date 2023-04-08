@@ -36,3 +36,13 @@ pub fn spilt_into_bloks(list : &[u8]) -> Vec<&[u8]>{
     }
     return vect;
 }
+pub fn concat_from_blocks_to_arr(mut blocks : Vec<&[u8]>) -> Vec<u8>{
+    let mut new: Vec<u8> = Vec::from("0".as_bytes());
+    new.remove(0);
+    for i in blocks{
+        for j in i{
+            new.push(*j);
+        }
+    }
+    return new;
+}
