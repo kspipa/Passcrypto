@@ -21,8 +21,15 @@ pub fn change_pass(pass : &[u8]) -> Vec<u8>{
     return hh;
 }
 pub fn change_pass_to(mut changed_pass : Vec<u8>) -> Vec<u8>{
-    let mut len = changed_pass.len() as usize;
     let nigofall = changed_pass[0] as usize;
+    if nigofall >= changed_pass.len(){
+        return changed_pass;
+    }
+    else {
+        if changed_pass[nigofall] != 1{
+            return changed_pass;
+        } 
+    }
     changed_pass.remove(0);
     let new = changed_pass.split_at_mut(nigofall).0;
     let mut nn = Vec::from(new);
@@ -36,4 +43,13 @@ pub fn get_key_from_pass(pass : &[u8]) -> Vec<u8>{
     let fin = binding.as_slice();
     let vrc = Vec::from(fin);
     return vrc;
+}
+pub fn from_vec_to_string(data : Vec<u8>) -> String{
+    let mut decstr = vec![String::new()];
+    decstr.remove(0);
+    for j in data{
+        let h = j as char;
+        decstr.push(h.to_string())
+    }
+    return decstr.concat();
 }

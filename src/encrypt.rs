@@ -18,30 +18,30 @@ pub fn decrypt_data(data : &[u8], key : &[u8]) -> Vec<u8>{
     cipher.decrypt_block(sdasd.into());
     return sdasd.to_vec();
 }
-pub fn spilt_into_bloks(list : &[u8]) -> Vec<&[u8]>{
-    let mut vect = vec!["0".as_bytes()];
+pub fn spilt_into_bloks(list : Vec<u8>) -> Vec<Vec<u8>>{
+    let mut vect = vec![vec![0]];
     if list.len() > 16{
         vect.remove(0);
         let (l, mut ll) = list.split_at(16);
-        vect.push(l);
+        vect.push(l.to_vec());
         while ll.len() != 16{
             let (l, _ll) = ll.split_at(16);
             ll = _ll;
-            vect.push(l);
+            vect.push(l.to_vec());
         }
-        vect.push(ll);
+        vect.push(ll.to_vec());
     }
     else {
         vect = vec![list];
     }
     return vect;
 }
-pub fn concat_from_blocks_to_arr(mut blocks : Vec<&[u8]>) -> Vec<u8>{
+pub fn concat_from_blocks_to_arr(mut blocks : Vec<Vec<u8>>) -> Vec<u8>{
     let mut new: Vec<u8> = Vec::from("0".as_bytes());
     new.remove(0);
     for i in blocks{
         for j in i{
-            new.push(*j);
+            new.push(j);
         }
     }
     return new;
