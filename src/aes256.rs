@@ -1,8 +1,5 @@
 use aes::Aes256;
-use aes::cipher::{
-    BlockCipher, BlockEncrypt, BlockDecrypt, KeyInit,
-    generic_array::GenericArray,
-};
+use aes::cipher::{BlockEncrypt, BlockDecrypt, KeyInit};
 
 pub fn encrypt_data<'a>(data : &[u8], key : &'a [u8]) -> Vec<u8>{
     let cipher = Aes256::new(key.into());
@@ -36,7 +33,7 @@ pub fn spilt_into_bloks(list : Vec<u8>) -> Vec<Vec<u8>>{
     }
     return vect;
 }
-pub fn concat_from_blocks_to_arr(mut blocks : Vec<Vec<u8>>) -> Vec<u8>{
+pub fn concat_from_blocks_to_arr(blocks : Vec<Vec<u8>>) -> Vec<u8>{
     let mut new: Vec<u8> = Vec::from("0".as_bytes());
     new.remove(0);
     for i in blocks{
