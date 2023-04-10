@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use sha2::{Digest , Sha256};
 
 pub fn change_pass_to_16_bytes(pass : &[u8]) -> Vec<u8>{
@@ -52,31 +54,4 @@ pub fn from_vec_to_string(data : Vec<u8>) -> String{
         decstr.push(h.to_string())
     }
     return decstr.concat();
-}
-pub fn split_arr_into_passwords(data : Vec<u8>) -> Vec<Vec<u8>>{
-    let nn = data[0] as usize;
-    let mut hd = data.clone();
-    let mut hh: Vec<Vec<u8>> = vec![vec![0]];
-    hh.remove(0);
-    let mut t = 0;
-    while hd.len() != 1{
-        let onepass = get_one_pass_from_arr(data.clone());
-        hh.push(onepass.clone());
-        for i in 0..onepass.len(){
-            hd.remove(i);
-        }
-    }
-    return hh;
-}
-fn get_one_pass_from_arr(passwords : Vec<u8>) -> Vec<u8>{
-    let start = passwords[0] as usize;
-    let mut newvec:Vec<u8> = vec![0];
-    newvec.remove(0);
-    for i in 0..passwords.len(){
-        if i >= start && passwords[i] != 1{
-            break;
-        }
-        newvec.push(passwords[i]);
-    }
-    return newvec;
 }

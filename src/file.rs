@@ -1,3 +1,4 @@
+use std::fmt::format;
 use std::fs;
 use std::io::prelude::*;
 
@@ -23,4 +24,13 @@ pub fn check_file(path : String) -> bool{
         Err(_) => false
     };
 }
-
+pub fn get_all_ps(dir : String) -> Vec<u8>{
+    let mut t = 0;
+    let mut res: Vec<u8> = vec![0];
+    res.remove(0);
+    while check_file(format!("{dir}/{t}.ps")) {
+        res.push(t);
+        t += 1;
+    }
+    return res;
+}

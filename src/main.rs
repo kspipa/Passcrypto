@@ -1,3 +1,4 @@
+
 mod aes256;
 mod pass;
 mod file;
@@ -27,7 +28,6 @@ fn get_pass(first : bool) -> Vec<u8>{
         println!("Set your first master password");
         std::io::stdin().read_line(&mut pass).unwrap();
         let key = pass::get_hash_from_pass(pass.as_bytes());
-        file::create_new("passs/0.ps".to_string());
         file::create_new("passs/check".to_string());
         let data = encrypt_thats_all("TRUE".as_bytes().to_vec(), key.clone());
         file::write_into(aes256::concat_from_blocks_to_arr(data), "passs/check".to_string());
@@ -63,22 +63,24 @@ fn menu(key : Vec<u8>){
         for i in std::io::stdin().lines(){ num = i.unwrap(); break;}
         let rr = num.as_str();
         if rr == "1"{
-            let pass = get_comapass();
+            let pass = get_comapass().to_string();
+            let t = file::get_all_ps("passs".to_string()).len();
+            let newfilepath = format!("passs/{t}.ps");
+            file::create_new(newfilepath.clone());
             let encryptedpass = encrypt_thats_all(pass.as_bytes().to_vec(), key.clone());
-            file::write_into(aes256::concat_from_blocks_to_arr(encryptedpass), "passs/0.ps".to_string());
+            file::write_into(aes256::concat_from_blocks_to_arr(encryptedpass), newfilepath);
             println!("Password has been write sucesfully");
         }
         else if rr == "2"{
-            let data = file::read_from("passs/0.ps".to_string());
-            println!("Readed data : {:?}", data);
-            if data.len() == 0 || data.len() == 1{
-                println!("You have no passwords. Use menu for writing new one\n");
-                continue;
+            let mut d = 0;
+            for i in file::get_all_ps("passs".to_string()){
+                d += 1;
+                let data = file::read_from(format!("passs/{i}.ps"));
+                let n = decrypt_thats_all(data, key.clone());
+                println!("{:?}", pass::from_vec_to_string(n).replace("\n", ""));
             }
-            let n = decrypt_thats_all(data, key.clone());
-            println!("Decrypted data : {:?}", n);
-            for i in n{
-                println!("{:?}", pass::from_vec_to_string(i).replace("\n", ""));
+            if d == 0{
+                println!("You have no passwords. Use menu for writing new one\n");
             }
         }
         else if rr == "3"{
@@ -101,26 +103,26 @@ fn encrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<Vec<u8>> {
     }
     return nvec;
 }
-fn decrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<Vec<u8>>{
-    let nn = aes256::spilt_into_bloks(data);
-    println!("Splited into blocks : {:?}", nn);
-    let mut nvec = vec![vec![0]];
-    nvec.remove(0);
-    for i in nn{
-        let kk = aes256::decrypt_data(i.as_slice(), key.as_slice());
-        nvec.push(kk);
+fn decrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<u8>{
+    let mm = aes256::spilt_into_bloks(data);
+    let mut newvec = vec![vec![0 as u8]];
+    newvec.remove(0);
+    for i in mm{
+        newvec.push(aes256::decrypt_data(i.as_slice(), key.as_slice()));
     }
-    let nig = aes256::concat_from_blocks_to_arr(nvec);
-    let kk2 = pass::split_arr_into_passwords(nig.clone());
-    let mut jr2 = vec![vec![0]];
-    println!("Concated arr : {:?}", kk2);
-    jr2.remove(0);
-    for i in kk2{
-        jr2.push(pass::change_pass_from_16_bytes_to_normal(i));
-    }
-    return jr2;
+    let mut jj = aes256::concat_from_blocks_to_arr(newvec);
+    let yy = pass::change_pass_from_16_bytes_to_normal(jj);
+    return yy;
 }
 pub fn check_pass(key : Vec<u8>) -> bool{
-    return true;
+    let data = file::read_from("passs/check".to_string());
+    let decinfo = decrypt_thats_all(data, key);
+    let res = pass::from_vec_to_string(decinfo.to_vec());
+    if res == "TRUE".to_string(){
+        return true;
+    }
+    else {
+        return false;
+    }
     
 }
