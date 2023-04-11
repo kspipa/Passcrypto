@@ -1,5 +1,3 @@
-use std::io::Read;
-
 use sha2::{Digest , Sha256};
 
 pub fn change_pass_to_16_bytes(pass : &[u8]) -> Vec<u8>{
@@ -14,7 +12,7 @@ pub fn change_pass_to_16_bytes(pass : &[u8]) -> Vec<u8>{
     }
     let pos = 16 - lastofblock;
     if len % 16 != 0 {
-        for i in 0..pos{
+        for _i in 0..pos{
             hh.push(1);
         }
     }

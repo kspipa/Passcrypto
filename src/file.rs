@@ -1,8 +1,7 @@
-use std::fmt::format;
 use std::fs;
 use std::io::prelude::*;
 
-pub fn create_new(path : String){
+pub fn create_new_ps_file(path : String){
     fs::File::create(path).unwrap();
 }
 pub fn write_into(data : Vec<u8>, path : String){
@@ -33,4 +32,7 @@ pub fn get_all_ps(dir : String) -> Vec<u8>{
         t += 1;
     }
     return res;
+}
+pub fn mkdir(path_with_name : String){
+    fs::create_dir(path_with_name).unwrap();
 }

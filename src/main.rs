@@ -8,7 +8,7 @@ fn main(){
     if file::check_file("passs/check".to_string()){
         if !file::check_file("passs/0.ps".to_string()){
             println!("0.ps was deleted and your passwords are missed\nWe make another one");
-            file::create_new("passs/0.ps".to_string());
+            file::create_new_ps_file("passs/0.ps".to_string());
         }
         key = get_pass(false);
         if key[0] == 0{return;}
@@ -16,7 +16,7 @@ fn main(){
     else{
         if file::check_file("passs/0.ps".to_string()){
             println!("check was deleted and your master password is missed\nWe make another one");
-            file::create_new("passs/0.ps".to_string());
+            file::create_new_ps_file("passs/0.ps".to_string());
         }
         key = get_pass(true);
     }
@@ -25,10 +25,11 @@ fn main(){
 fn get_pass(first : bool) -> Vec<u8>{
     let mut pass = String::new();
     if first{
+        file::mkdir("passs".to_string());
         println!("Set your first master password");
         std::io::stdin().read_line(&mut pass).unwrap();
         let key = pass::get_hash_from_pass(pass.as_bytes());
-        file::create_new("passs/check".to_string());
+        file::create_new_ps_file("passs/check".to_string());
         let data = encrypt_thats_all("TRUE".as_bytes().to_vec(), key.clone());
         file::write_into(aes256::concat_from_blocks_to_arr(data), "passs/check".to_string());
         return key;
@@ -66,7 +67,7 @@ fn menu(key : Vec<u8>){
             let pass = get_comapass().to_string();
             let t = file::get_all_ps("passs".to_string()).len();
             let newfilepath = format!("passs/{t}.ps");
-            file::create_new(newfilepath.clone());
+            file::create_new_ps_file(newfilepath.clone());
             let encryptedpass = encrypt_thats_all(pass.as_bytes().to_vec(), key.clone());
             file::write_into(aes256::concat_from_blocks_to_arr(encryptedpass), newfilepath);
             println!("Password has been write sucesfully");
@@ -110,7 +111,7 @@ fn decrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<u8>{
     for i in mm{
         newvec.push(aes256::decrypt_data(i.as_slice(), key.as_slice()));
     }
-    let mut jj = aes256::concat_from_blocks_to_arr(newvec);
+    let jj = aes256::concat_from_blocks_to_arr(newvec);
     let yy = pass::change_pass_from_16_bytes_to_normal(jj);
     return yy;
 }
