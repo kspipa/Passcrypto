@@ -36,3 +36,13 @@ pub fn get_all_ps(dir : String) -> Vec<u8>{
 pub fn mkdir(path_with_name : String){
     fs::create_dir(path_with_name).unwrap();
 }
+pub fn check_dir(path : String) -> bool{
+    let nigger = match fs::create_dir(path.clone()) {
+        Ok(_) => {rmdir(path);false},
+        Err(_) => {true}
+    };
+    return nigger;
+}
+pub fn rmdir(path : String){
+    fs::remove_dir(path).unwrap();
+}

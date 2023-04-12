@@ -1,4 +1,3 @@
-
 mod aes256;
 mod pass;
 mod file;
@@ -17,6 +16,9 @@ fn main(){
         if file::check_file("passs/0.ps".to_string()){
             println!("check was deleted and your master password is missed\nWe make another one");
             file::create_new_ps_file("passs/0.ps".to_string());
+        }
+        if file::check_dir("passs".to_string()){
+            file::rmdir("passs".to_string());
         }
         key = get_pass(true);
     }
@@ -75,10 +77,10 @@ fn menu(key : Vec<u8>){
         else if rr == "2"{
             let mut d = 0;
             for i in file::get_all_ps("passs".to_string()){
-                d += 1;
                 let data = file::read_from(format!("passs/{i}.ps"));
                 let n = decrypt_thats_all(data, key.clone());
-                println!("{:?}", pass::from_vec_to_string(n).replace("\n", ""));
+                println!("{d}.{:?}", pass::from_vec_to_string(n).replace("\n", ""));
+                d += 1
             }
             if d == 0{
                 println!("You have no passwords. Use menu for writing new one\n");
