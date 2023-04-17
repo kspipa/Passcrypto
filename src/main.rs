@@ -3,7 +3,6 @@ mod pass;
 mod file;
 fn main(){
     let mut key = vec![0];
-    key.remove(0);
     if file::check_file("passs/check".to_string()){
         if !file::check_file("passs/0.ps".to_string()){
             println!("0.ps was deleted and your passwords are missed\nWe make another one");
@@ -51,17 +50,20 @@ fn get_pass(first : bool) -> Vec<u8>{
 
 }
 fn get_comapass() -> String{
+    let mut username = String::new();
+    println!("Type your username");
+    std::io::stdin().read_line(&mut username).unwrap();
     println!("Type your new pass");
     let mut pass = String::new();
     let mut res = String::new();
     std::io::stdin().read_line(&mut pass).unwrap();
     println!("Type resource");
     std::io::stdin().read_line(&mut res).unwrap();
-    return format!("{}:{}", pass, res);
+    return format!("{}:{}:{}",username, pass, res);
 }
 fn menu(key : Vec<u8>){
     loop{   
-        println!("Ok, what do you want to do : \n    1. Write new password \n    2. Get passwords \n    3. Quit \nSet number");
+        println!("Ok, what do you want to do : \n    1. Write new password \n    2. Get passwords \n    3. Change password \n    4. Delete password \n    5. Quit \nSet number");
         let mut num = String::new();
         for i in std::io::stdin().lines(){ num = i.unwrap(); break;}
         let rr = num.as_str();
@@ -86,7 +88,38 @@ fn menu(key : Vec<u8>){
                 println!("You have no passwords. Use menu for writing new one\n");
             }
         }
-        else if rr == "3"{
+        else if rr == "3" {
+            let mut str = String::new();
+            println!("Print your password's number");
+            std::io::stdin().read_line(&mut str).unwrap();
+            let path = format!("passs/{}.ps", str).replace("\n", "");
+            if file::check_file(path.clone()){
+                println!("Your old pass : {}", pass::from_vec_to_string(decrypt_thats_all(file::read_from(path.clone()), key.clone())).replace("\n", ""));
+                let pass = get_comapass().to_string();
+                let encryptedpass = encrypt_thats_all(pass.as_bytes().to_vec(), key.clone());
+                file::rmfile(path.clone());
+                file::create_new_ps_file(path.clone());
+                file::write_into(aes256::concat_from_blocks_to_arr(encryptedpass), path);
+                println!("Password has been change sucesfully");
+            }
+            else{
+                println!("You dont have this password");
+            }
+        }
+        else if rr == "4" {
+            let mut str = String::new();
+            println!("Print your password's number");
+            std::io::stdin().read_line(&mut str).unwrap();
+            let path = format!("passs/{}.ps", str).replace("\n", "");
+            if file::check_file(path.clone()){
+                file::rmfile(path);
+                println!("Your password succesfully deleted");
+            }
+            else{
+                println!("You dont have this password");
+            }
+        }
+        else if rr == "5"{
             return;
         }
         else{

@@ -46,3 +46,6 @@ pub fn check_dir(path : String) -> bool{
 pub fn rmdir(path : String){
     fs::remove_dir(path).unwrap();
 }
+pub fn rmfile(path : String){
+    fs::remove_file(path).unwrap();
+}
