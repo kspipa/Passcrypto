@@ -1,17 +1,17 @@
 mod aes256;
 mod pass;
 mod file;
+
 fn main(){
     let mut key = vec![0];
-    if file::check_file("passs/check".to_string()){
+    if file::check_file(format!("{}/.passs/checkpass", file::get_path_to_passs())){
         key = get_pass(false);
         if key[0] == 0{return;}
     }
     else{
         if file::check_file("passs/0.ps".to_string()){
-            println!("check was deleted and your master password is missed\nWe make another one");
-            for i in file::get_all_ps("passs".to_string()){
-                file::rmdir("passs/{i}.ps".to_string());
+            for i in file::get_all_ps(format!("{}/.passs/", file::get_path_to_passs())){
+                file::rmdir(format!("{}/.passs/{i}.ps", file::get_path_to_passs()));
             }
         }
         key = get_pass(true);
@@ -20,24 +20,25 @@ fn main(){
 }
 fn get_pass(first : bool) -> Vec<u8>{
     if first{
-        file::mkdir("passs".to_string());
         println!("Set your first master password");
         let pass = rpassword::read_password().unwrap();
         let key = pass::get_hash_from_pass(pass.as_bytes());
-        file::create_new_ps_file("passs/check".to_string());
+        file::mkdir(format!("{}/.passs", file::get_path_to_passs()));
+        let key = pass::get_hash_from_pass(pass.as_bytes());
+        let path = format!("{}/.passs/checkpass", file::get_path_to_passs());
+        file::create_new_file(path.clone());
         let data = encrypt_thats_all("TRUE".as_bytes().to_vec(), key.clone());
-        file::write_into(aes256::concat_from_blocks_to_arr(data), "passs/check".to_string());
+        file::write_into(aes256::concat_from_blocks_to_arr(data), path);
         return key;
     }
     else{
-        println!("Print your master password, please");
+        println!("Type your master password");
         let pass = rpassword::read_password().unwrap();
         let key = pass::get_hash_from_pass(pass.as_bytes());
         if check_pass(key.clone()){
             return key;
         }
         else {
-            println!("False\n");
             return get_pass(false);
         }
     }
@@ -64,17 +65,17 @@ fn menu(key : Vec<u8>){
         match rr {
             "1" => {
                 let pass = get_comapass().to_string();
-                let t = file::get_all_ps("passs".to_string()).len();
-                let newfilepath = format!("passs/{t}.ps");
-                file::create_new_ps_file(newfilepath.clone());
+                let t = file::get_all_ps(format!("{}/.passs/", file::get_path_to_passs())).len();
+                let newfilepath = format!("{}/.passs/{t}.ps", file::get_path_to_passs());
+                file::create_new_file(newfilepath.clone());
                 let encryptedpass = encrypt_thats_all(pass.as_bytes().to_vec(), key.clone());
                 file::write_into(aes256::concat_from_blocks_to_arr(encryptedpass), newfilepath);
                 println!("Password has been write sucesfully");
             }
             "2" => {
                 let mut d = 0;
-                for i in file::get_all_ps("passs".to_string()){
-                    let data = file::read_from(format!("passs/{i}.ps"));
+                for i in file::get_all_ps(format!("{}/.passs/", file::get_path_to_passs())){
+                    let data = file::read_from(format!("{}/.passs/{i}.ps", file::get_path_to_passs()));
                     let n = decrypt_thats_all(data, key.clone());
                     println!("{d}.{:?}", pass::from_vec_to_string(n).replace("\n", ""));
                     d += 1
@@ -87,13 +88,13 @@ fn menu(key : Vec<u8>){
                 let mut str = String::new();
                 println!("Print your password's number");
                 std::io::stdin().read_line(&mut str).unwrap();
-                let path = format!("passs/{}.ps", str).replace("\n", "");
+                let path = format!("{}/.passs/{}.ps", file::get_path_to_passs(), str).replace("\n", "");
                 if file::check_file(path.clone()){
                     println!("Your old pass : {}", pass::from_vec_to_string(decrypt_thats_all(file::read_from(path.clone()), key.clone())).replace("\n", ""));
                     let pass = get_comapass().to_string();
                     let encryptedpass = encrypt_thats_all(pass.as_bytes().to_vec(), key.clone());
                     file::rmfile(path.clone());
-                    file::create_new_ps_file(path.clone());
+                    file::create_new_file(path.clone());
                     file::write_into(aes256::concat_from_blocks_to_arr(encryptedpass), path);
                     println!("Password has been change sucesfully");
                 }
@@ -105,7 +106,7 @@ fn menu(key : Vec<u8>){
                 let mut str = String::new();
                 println!("Print your password's number");
                 std::io::stdin().read_line(&mut str).unwrap();
-                let path = format!("passs/{}.ps", str).replace("\n", "");
+                let path = format!("{}/.passs/{}.ps", file::get_path_to_passs(), str).replace("\n", "");
                 if file::check_file(path.clone()){
                     file::rmfile(path);
                     println!("Your password succesfully deleted");
@@ -147,7 +148,7 @@ fn decrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<u8>{
     return yy;
 }
 pub fn check_pass(key : Vec<u8>) -> bool{
-    let data = file::read_from("passs/check".to_string());
+    let data = file::read_from(format!("{}/.passs/checkpass", file::get_path_to_passs()));
     let decinfo = decrypt_thats_all(data, key);
     let res = pass::from_vec_to_string(decinfo.to_vec());
     if res == "TRUE".to_string(){
