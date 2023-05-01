@@ -22,7 +22,6 @@ fn get_pass(first : bool) -> Vec<u8>{
     if first{
         println!("Set your first master password");
         let pass = rpassword::read_password().unwrap();
-        let key = pass::get_hash_from_pass(pass.as_bytes());
         file::mkdir(format!("{}/.passs", file::get_path_to_passs()));
         let key = pass::get_hash_from_pass(pass.as_bytes());
         let path = format!("{}/.passs/checkpass", file::get_path_to_passs());
