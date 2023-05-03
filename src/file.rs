@@ -51,7 +51,7 @@ pub fn rmfile(path : String){
     fs::remove_file(path).unwrap();
 }
 pub fn get_path_to_passs() -> String{
-    return dirs::document_dir().unwrap().to_str().unwrap().to_string();
+    return dirs::download_dir().unwrap().to_str().unwrap().to_string();
 }
 pub fn check_files_in_dir(path : &str) -> Vec<String>{
     let paths = fs::read_dir(path).unwrap();

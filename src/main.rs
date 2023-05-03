@@ -14,7 +14,7 @@ fn main(){
     else{
         if file::check_file(format!("{}/.passs/0.ps", file::get_path_to_passs())){
             for i in file::get_all_ps(format!("{}/.passs/", file::get_path_to_passs())){
-                file::rmdir(format!("{}/.passs/{i}.ps", file::get_path_to_passs()));
+                file::rmfile(format!("{}/.passs/{i}.ps", file::get_path_to_passs()));
             }
         }
         start(&mut siv, "Print your password".to_string());
