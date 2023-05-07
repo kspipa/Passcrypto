@@ -28,8 +28,14 @@ pub fn get_all_ps(dir : String) -> Vec<u8>{
     let mut t = 0;
     let mut res: Vec<u8> = vec![0];
     res.remove(0);
-    while check_file(format!("{dir}/{t}.ps")) {
-        res.push(t);
+    while t != 255 {
+        if check_file(format!("{}/{}.ps", dir, t)){
+            res.push(t);
+        }
+        else {
+            t += 1;
+            continue;
+        }
         t += 1;
     }
     return res;
@@ -51,14 +57,5 @@ pub fn rmfile(path : String){
     fs::remove_file(path).unwrap();
 }
 pub fn get_path_to_passs() -> String{
-    return dirs::download_dir().unwrap().to_str().unwrap().to_string();
-}
-pub fn check_files_in_dir(path : &str) -> Vec<String>{
-    let paths = fs::read_dir(path).unwrap();
-    let mut res = vec!["0".to_string()];
-    res.remove(0);
-    for pathd in paths {
-        res.push(pathd.unwrap().path().to_str().unwrap().to_string().replace(path, ""));
-    }
-    return res;
+    return format!("{}/.passs", dirs::download_dir().unwrap().to_str().unwrap().to_string());
 }
