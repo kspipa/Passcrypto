@@ -6,9 +6,8 @@ pub fn create_new_file(path : String){
     fs::File::create(path).unwrap();
 }
 pub fn write_into(data : Vec<u8>, path : String){
-    let old = read_from(path.clone());
     let mut file = fs::File::create(path).unwrap();
-    file.write_all([old, data].concat().as_slice()).unwrap();
+    file.write_all(data.as_slice()).unwrap();
 }
 pub fn read_from(path : String) -> Vec<u8>{
     let mut t = vec![0];
@@ -16,6 +15,12 @@ pub fn read_from(path : String) -> Vec<u8>{
     let mut file = fs::File::open(path).unwrap();
     file.read_to_end(&mut t).unwrap();
     return t;
+}
+pub fn write_to_log(data : &str){
+    let old  = read_from(format!("{}/log", get_path_to_passs()));
+    let mut file = fs::File::create(format!("{}/log", get_path_to_passs())).unwrap();
+    let newdata = ["\n", data].concat();
+    file.write([old , newdata.as_bytes().to_vec()].concat().as_slice());
 }
 pub fn check_file(path : String) -> bool{
     let file = fs::File::open(path);
