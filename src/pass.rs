@@ -1,4 +1,6 @@
 use sha2::{Digest , Sha256};
+use rand::{thread_rng, Rng};
+use rand::distributions::Alphanumeric;
 
 pub fn change_pass_to_16_bytes(pass : &[u8]) -> Vec<u8>{
     let mut hh: Vec<u8> = vec![0];
@@ -52,4 +54,13 @@ pub fn from_vec_to_string(data : Vec<u8>) -> String{
         decstr.push(h.to_string())
     }
     return decstr.concat();
+}
+
+pub fn generate_password(num: usize) -> String{
+    let rand_string: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(num)
+        .map(char::from)
+        .collect();
+    return rand_string;
 }
