@@ -2,6 +2,7 @@ use cursive::Cursive;
 use cursive::views::*;
 use cursive::traits::*;
 use std::collections::HashMap;
+use std::rc::Rc;
 mod aes256;
 mod pass;
 mod file;
@@ -65,11 +66,13 @@ fn check_pass(key : Vec<u8>) -> bool{
         return false;
     }
 }
-fn write_pass(password : &String, key : Vec<u8>, mut passs : HashMap<Vec<u8>, i8>) -> HashMap<Vec<u8>, i8>{
-    let t = match file::get_all_ps(file::get_path_to_passs()).last(){
+fn write_pass(password : &String, key : Vec<u8>, mut passs : HashMap<Vec<u8>, i8>, num : u8) -> HashMap<Vec<u8>, i8>{
+    let mut t = match file::get_all_ps(file::get_path_to_passs()).last(){
         None => 0,
         Some(h) => *h + 1
     };
+    if num == 120{}
+    else {t = num;}
     let newfilepath = format!("{}/{}.ps", file::get_path_to_passs(), t.clone());
     file::create_new_file(newfilepath.clone());
     let encryptedpass = encrypt_thats_all(password.as_bytes().to_vec(), key.clone());
@@ -117,62 +120,92 @@ fn right(ui : &mut Cursive, passs : &mut HashMap<Vec<u8>, i8>, key : Vec<u8>){
     ui.call_on_name("password", |b : &mut EditView| {b.set_content("")});
     let _jj = key.clone();
     let hh = key.clone();
+    let hj = key.clone();
     let newkey = key.clone();
     let newpasss = passs.clone();
     let _ll = passs.clone();
-    let select = SelectView::<String>::new().on_submit( move |x: &mut Cursive , c : &str| {get_compass(x, _jj.clone())}).with_name("select").fixed_size((65, 5));
+    let select = SelectView::<String>::new().on_submit( move |x: &mut Cursive , c : &str| {get_compass(x, _jj.clone(), c)}).with_name("select").fixed_size((65, 5));
     let dialog = Dialog::around(LinearLayout::vertical()
-        .child(ResizedView::with_fixed_size((5, 2), Button::new("Write new", move |g: &mut Cursive| {get_compass(g, hh.clone());})))
-        .child(ResizedView::with_fixed_size((5, 2), Button::new("Delete", move |g| {delete_pass(g, key.clone())})))
+        .child(ResizedView::with_fixed_size((5, 2), Button::new("Write new", move |g: &mut Cursive| {get_compass(g, hh.clone(), "");})))
+        .child(ResizedView::with_fixed_size((5, 2), Button::new("Change", move |g| {let info = g.call_on_name("select", |v : &mut SelectView| {return v.selection().unwrap();}).unwrap();get_compass(g, hj.clone(), info.as_str());})))
+        .child(ResizedView::with_fixed_size((5, 2), Button::new("Delete", move |g| {let kk = delete_pass(g, key.clone());})))
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Quit", |g| {g.pop_layer();})))).fixed_size((50, 100));
     ui.add_layer(Dialog::around(LinearLayout::horizontal().child(Dialog::around(select)).child(DummyView.fixed_size((110, 5))).child(dialog)).fixed_size((200, 100)));
     for i in newpasss{
         add_passwords_in_list(pass::from_vec_to_string(decrypt_thats_all(i.0, newkey.clone())), ui);
     }
 }
-fn delete_pass(s: &mut Cursive, key : Vec<u8>) {
+fn delete_pass(s: &mut Cursive, key : Vec<u8>) -> i8 {
     let mut passs = s.with_user_data(|hash :  &mut HashMap<Vec<u8>, i8>| {return hash.clone();}).unwrap();
     let mut select = s.find_name::<SelectView<String>>("select").unwrap();
     let _ii = select.selection();
+    let mut _num : i8 = 120;
     match select.selected_id() {
         None => s.add_layer(Dialog::info("No pass to remove")),
         Some(focus) => {
             select.remove_item(focus);
             let encryptedpass = aes256::concat_from_blocks_to_arr(encrypt_thats_all(_ii.clone().unwrap().as_bytes().to_vec(), key.clone()));
-            let _num = match passs.get(&((encryptedpass))){
+            _num = match passs.get(&((encryptedpass))){
                 Some(l) => {*l},
                 None => {120}
             };
             passs.remove(&(encryptedpass));
             s.set_user_data(passs);
             if _num == 120{
-                return;
+                return 120;
             }
             let path = format!("{}/{}.ps", file::get_path_to_passs(), _num);
             file::rmfile(path);
+            return _num;
         }
     }
+    return _num;
 }
-fn get_compass(ui : &mut Cursive, key : Vec<u8>){
+fn get_compass(ui : &mut Cursive, key : Vec<u8>, data : &str){
+    let key2 = key.to_owned();
     ui.add_layer(ResizedView::with_fixed_size((50, 10), Dialog::around(LinearLayout::vertical()
         .child(LinearLayout::horizontal().child(TextView::new("Username")).child(DummyView).child(TextView::new(":")).child(DummyView).child(EditView::new().with_name("name").fixed_size((20 , 2))))
-        .child(LinearLayout::horizontal().child(TextView::new("Password")).child(DummyView).child(TextView::new(":")).child(DummyView).child(EditView::new().on_submit(|v , text| {v.add_layer(Dialog::around(LinearLayout::vertical()
-                .child(TextView::new("Generate new password"))
-                .child(DummyView.fixed_size((20, 5)))
-                .child(LinearLayout::horizontal().child(Button::new("No", |v| {v.pop_layer();})).child(DummyView.fixed_size((10 , 5))).child(Button::new("Ok", |f| {f.call_on_name("passs", |v : &mut EditView| {v.set_content(pass::generate_password(15))});f.pop_layer();})))).fixed_size((30, 10)))})
-            .with_name("passs").fixed_size((20 , 2))))
+        .child(LinearLayout::horizontal().child(TextView::new("Password")).child(DummyView).child(TextView::new(":")).child(DummyView).child(EditView::new().with_name("passs").fixed_size((20 , 2))).child(DummyView).child(Button::new("X", |z| {z.call_on_name("passs", |f : &mut EditView| {f.set_content(pass::generate_password(15))});})))
         .child(LinearLayout::horizontal().child(TextView::new("Source")).child(DummyView).child(TextView::new(":")).child(DummyView).child(EditView::new().with_name("source").fixed_size((20 , 2))))
         .child(DummyView)
-        .child(LinearLayout::horizontal().child(Button::new("Quit", |v| {v.pop_layer();})).child(DummyView.fixed_size((35, 1))).child(Button::new("Ok", move |x: &mut Cursive| {
-    let username = x.call_on_name("name", |b: &mut EditView| {b.get_content().to_string()}).unwrap();
-    let password = x.call_on_name("passs", |b: &mut EditView| {b.get_content().to_string()}).unwrap();
-    let source = x.call_on_name("source", |b: &mut EditView| {b.get_content().to_string()}).unwrap();
-    let newpaass = write_pass(&format!("{}:{}:{}", username, password, source), key.clone(), x.with_user_data(|hash :  &mut HashMap<Vec<u8>, i8>| {return hash.clone();}).unwrap());
+        .child(LinearLayout::horizontal().child(Button::new("Quit", |v| {v.pop_layer();})).child(DummyView.fixed_size((15, 1))).child(Button::new("Copy", |c| {let all_String = get_info(c);pass::copy_to_clipboard(all_String.clone());c.add_layer(Dialog::info(format!("Password : '{}' has been copied", all_String).as_str()));})).child(DummyView.fixed_size((15, 1))).child(Button::new("Ok", move |x: &mut Cursive| {
+    let all_String = get_info(x);
+    let newpaass = write_pass(&all_String, key.clone(), x.with_user_data(|hash :  &mut HashMap<Vec<u8>, i8>| {return hash.clone();}).unwrap(), 120);
     x.set_user_data(newpaass);
-    add_passwords_in_list(format!("{}:{}:{}", username, password, source), x);
+    add_passwords_in_list(all_String, x);
     x.pop_layer();
-    }))))));
+    }).with_name("Ok_button"))))));
+    if data == ""{}
+    else {
+        set_info(ui, data);
+        ui.call_on_name("Ok_button", move |c : &mut Button| {
+            c.set_callback(move |x|{
+                let all_string = get_info(x);
+                let _num = delete_pass(x, key2.clone());
+                let newpaass = write_pass(&all_string, key2.clone(), x.with_user_data(|hash :  &mut HashMap<Vec<u8>, i8>| {return hash.clone();}).unwrap(), _num as u8);
+                x.set_user_data(newpaass);
+                add_passwords_in_list(all_string, x);
+                x.pop_layer();
+            });
+        });
+    }
 }
 fn add_passwords_in_list(passs : String, ui : &mut Cursive){
     ui.call_on_name("select", |x : &mut SelectView| {x.add_all_str(vec![passs])});
+}
+fn get_info(x : &mut Cursive) -> String{
+    let username = x.call_on_name("name", |b: &mut EditView| {b.get_content().to_string()}).unwrap();
+    let password = x.call_on_name("passs", |b: &mut EditView| {b.get_content().to_string()}).unwrap();
+    let source = x.call_on_name("source", |b: &mut EditView| {b.get_content().to_string()}).unwrap();
+    return format!("{}:{}:{}", username, password, source);
+}
+fn set_info(x : &mut Cursive, info : &str){
+    let splited = info.split(":");
+    let mut num: Vec<&str> = Vec::new();
+    for i in splited{
+        num.push(i);
+    }
+    x.call_on_name("name", |b: &mut EditView| {b.set_content(num[0])});
+    x.call_on_name("passs", |b: &mut EditView| {b.set_content(num[1])});
+    x.call_on_name("source", |b: &mut EditView| {b.set_content(num[2])});
 }

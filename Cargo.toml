@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 aes = "0.8.2"
+clipboard = "0.5.0"
 cursive = "0.20.0"
 dirs = "5.0.0"
 rand = "0.8.5"

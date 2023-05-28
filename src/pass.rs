@@ -1,7 +1,7 @@
 use sha2::{Digest , Sha256};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
-
+use clipboard::{ClipboardProvider, ClipboardContext};
 pub fn change_pass_to_16_bytes(pass : &[u8]) -> Vec<u8>{
     let mut hh: Vec<u8> = vec![0];
     let len = pass.len() + 1;
@@ -63,4 +63,8 @@ pub fn generate_password(num: usize) -> String{
         .map(char::from)
         .collect();
     return rand_string;
+}
+pub fn copy_to_clipboard(text : String){
+    let mut clip : ClipboardContext = clipboard::ClipboardProvider::new().unwrap();
+    clip.set_contents(text);
 }
