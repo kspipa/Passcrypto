@@ -13,3 +13,4 @@ git clone https://github.com/kspipa/Passcrypto.git
 cd Passcrypto
 cargo run
 ```
+or you can download executable file from releases
