@@ -2,7 +2,6 @@ use cursive::Cursive;
 use cursive::views::*;
 use cursive::traits::*;
 use std::collections::HashMap;
-use std::rc::Rc;
 mod aes256;
 mod pass;
 mod file;
@@ -34,8 +33,16 @@ fn get_passwords_from_files() -> HashMap<Vec<u8> , i8>{
     }
     return res;
 }
+fn get_hashes_from_decr_files(key : Vec<u8>) -> HashMap<Vec<u8> , i8>{
+    let mut res : HashMap<Vec<u8>, i8> = HashMap::new();
+    for i in file::get_all_ps(file::get_path_to_passs()){
+        let data = file::read_from(format!("{}/{i}.ps", file::get_path_to_passs()));
+        res.insert(pass::get_hash_from_pass(decrypt_thats_all(data, key.clone()).as_mut_slice()), i as i8);
+    }
+    return res;
+}
 fn encrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<Vec<u8>> {
-    let binding = pass::change_pass_to_16_bytes(data.as_slice());
+    let binding = pass::pad(data.as_slice());
     let newstr = aes256::spilt_into_bloks(binding);
     let mut nvec:Vec<Vec<u8>> = vec![vec![0]];
     nvec.remove(0);
@@ -52,7 +59,7 @@ fn decrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<u8>{
         newvec.push(aes256::decrypt_data(i.as_slice(), key.as_slice()));
     }
     let jj = aes256::concat_from_blocks_to_arr(newvec);
-    let yy = pass::change_pass_from_16_bytes_to_normal(jj);
+    let yy = pass::unpad(jj);
     return yy;
 }
 fn check_pass(key : Vec<u8>) -> bool{
@@ -67,6 +74,7 @@ fn check_pass(key : Vec<u8>) -> bool{
     }
 }
 fn write_pass(password : &String, key : Vec<u8>, mut passs : HashMap<Vec<u8>, i8>, num : u8) -> HashMap<Vec<u8>, i8>{
+    let hash = pass::get_hash_from_pass(password.as_bytes());
     let mut t = match file::get_all_ps(file::get_path_to_passs()).last(){
         None => 0,
         Some(h) => *h + 1
@@ -77,7 +85,7 @@ fn write_pass(password : &String, key : Vec<u8>, mut passs : HashMap<Vec<u8>, i8
     file::create_new_file(newfilepath.clone());
     let encryptedpass = encrypt_thats_all(password.as_bytes().to_vec(), key.clone());
     file::write_into(aes256::concat_from_blocks_to_arr(encryptedpass.clone()), newfilepath);
-    passs.insert(aes256::concat_from_blocks_to_arr(encryptedpass), t as i8);
+    passs.insert(hash, t as i8);
     return passs;
 }
 fn start(siv : &mut Cursive, first_or_not : bool) {
@@ -103,7 +111,7 @@ fn start(siv : &mut Cursive, first_or_not : bool) {
             }
             else {
                 if check_pass(key.clone()){
-                    right(x, &mut get_passwords_from_files(), key);
+                    right(x, &mut get_hashes_from_decr_files(key.clone()), key);
                 }
                 else {
                     dont_right(x);
@@ -118,24 +126,20 @@ fn dont_right(ui : &mut Cursive){
 fn right(ui : &mut Cursive, passs : &mut HashMap<Vec<u8>, i8>, key : Vec<u8>){
     ui.set_user_data(passs.clone());
     ui.call_on_name("password", |b : &mut EditView| {b.set_content("")});
-    let _jj = key.clone();
-    let hh = key.clone();
-    let hj = key.clone();
-    let newkey = key.clone();
-    let newpasss = passs.clone();
-    let _ll = passs.clone();
+    let (_jj, hh, hj, newkey) = (key.clone(), key.clone(), key.clone(), key.clone());
     let select = SelectView::<String>::new().on_submit( move |x: &mut Cursive , c : &str| {get_compass(x, _jj.clone(), c)}).with_name("select").fixed_size((100, 5));
     let dialog = Dialog::around(LinearLayout::vertical()
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Write new", move |g: &mut Cursive| {get_compass(g, hh.clone(), "");})))
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Change", move |g| {let info = g.call_on_name("select", |v : &mut SelectView| {return v.selection().unwrap();}).unwrap();get_compass(g, hj.clone(), info.as_str());})))
-        .child(ResizedView::with_fixed_size((5, 2), Button::new("Delete", move |g| {let kk = delete_pass(g, key.clone());})))
+        .child(ResizedView::with_fixed_size((5, 2), Button::new("Delete", move |g| {delete_pass(g);})))
+        .child(DummyView.fixed_size((5, 38)))
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Quit", |g| {g.pop_layer();})))).fixed_size((50, 100));
     ui.add_layer(Dialog::around(LinearLayout::horizontal().child(Dialog::around(select)).child(DummyView.fixed_size((75, 5))).child(dialog)).fixed_size((200, 100)));
-    for i in newpasss{
+    for i in get_passwords_from_files(){
         add_passwords_in_list(pass::from_vec_to_string(decrypt_thats_all(i.0, newkey.clone())), ui);
     }
 }
-fn delete_pass(s: &mut Cursive, key : Vec<u8>) -> i8 {
+fn delete_pass(s: &mut Cursive) -> i8 {
     let mut passs = s.with_user_data(|hash :  &mut HashMap<Vec<u8>, i8>| {return hash.clone();}).unwrap();
     let mut select = s.find_name::<SelectView<String>>("select").unwrap();
     let _ii = select.selection();
@@ -144,7 +148,7 @@ fn delete_pass(s: &mut Cursive, key : Vec<u8>) -> i8 {
         None => s.add_layer(Dialog::info("No pass to remove")),
         Some(focus) => {
             select.remove_item(focus);
-            let encryptedpass = aes256::concat_from_blocks_to_arr(encrypt_thats_all(_ii.clone().unwrap().as_bytes().to_vec(), key.clone()));
+            let encryptedpass = pass::get_hash_from_pass(_ii.clone().unwrap().as_bytes());
             _num = match passs.get(&((encryptedpass))){
                 Some(l) => {*l},
                 None => {120}
@@ -170,7 +174,12 @@ fn get_compass(ui : &mut Cursive, key : Vec<u8>, data : &str){
         .child(DummyView)
         .child(LinearLayout::horizontal().child(Button::new("Quit", |v| {v.pop_layer();})).child(DummyView.fixed_size((15, 1))).child(Button::new("Copy", |c| {let all_String = get_info(c);pass::copy_to_clipboard(all_String.clone());c.add_layer(Dialog::info(format!("Password : '{}' has been copied", all_String).as_str()));})).child(DummyView.fixed_size((15, 1))).child(Button::new("Ok", move |x: &mut Cursive| {
     let all_String = get_info(x);
-    let newpaass = write_pass(&all_String, key.clone(), x.with_user_data(|hash :  &mut HashMap<Vec<u8>, i8>| {return hash.clone();}).unwrap(), 120);
+    let hass = x.with_user_data(|hash :  &mut HashMap<Vec<u8>, i8>| {return hash.clone();}).unwrap();
+    match check_hashmap(hass.clone(), all_String.clone()) {
+        Ok(_) => 1,
+        Err(_) => {x.add_layer(Dialog::info("This password already writen"));return;}
+    };
+    let newpaass = write_pass(&all_String, key.clone(), hass, 120);
     x.set_user_data(newpaass);
     add_passwords_in_list(all_String, x);
     x.pop_layer();
@@ -181,8 +190,13 @@ fn get_compass(ui : &mut Cursive, key : Vec<u8>, data : &str){
         ui.call_on_name("Ok_button", move |c : &mut Button| {
             c.set_callback(move |x|{
                 let all_string = get_info(x);
-                let _num = delete_pass(x, key2.clone());
-                let newpaass = write_pass(&all_string, key2.clone(), x.with_user_data(|hash :  &mut HashMap<Vec<u8>, i8>| {return hash.clone();}).unwrap(), _num as u8);
+                let hass = x.with_user_data(|hash :  &mut HashMap<Vec<u8>, i8>| {return hash.clone();}).unwrap();
+                match check_hashmap(hass.clone(), all_string.clone()){
+                    Ok(_) => 1,
+                    Err(_) => {x.pop_layer(); return;}
+                };
+                let _num = delete_pass(x);
+                let newpaass = write_pass(&all_string, key2.clone(), hass, _num as u8);
                 x.set_user_data(newpaass);
                 add_passwords_in_list(all_string, x);
                 x.pop_layer();
@@ -192,6 +206,15 @@ fn get_compass(ui : &mut Cursive, key : Vec<u8>, data : &str){
 }
 fn add_passwords_in_list(passs : String, ui : &mut Cursive){
     ui.call_on_name("select", |x : &mut SelectView| {x.add_all_str(vec![passs])});
+}
+fn check_hashmap(passs : HashMap<Vec<u8>, i8>, string : String) -> Result<bool , bool>{
+    let hash = pass::get_hash_from_pass(string.as_bytes());
+    for i in passs{
+        if i.0 == hash{
+            return Err(false);
+        }
+    }
+    return Ok(true);
 }
 fn get_info(x : &mut Cursive) -> String{
     let username = x.call_on_name("name", |b: &mut EditView| {b.get_content().to_string()}).unwrap();

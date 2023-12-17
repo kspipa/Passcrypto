@@ -1,5 +1,6 @@
 use std::fs;
 use std::io::prelude::*;
+use json;
 use dirs;
 
 pub fn create_new_file(path : String){
