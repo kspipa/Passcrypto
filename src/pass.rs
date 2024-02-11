@@ -66,3 +66,12 @@ pub fn copy_to_clipboard(text : String){
     let mut clip : ClipboardContext = clipboard::ClipboardProvider::new().unwrap();
     clip.set_contents(text);
 }
+pub fn to_hex(data: &[u8]) -> String{
+    let mut new_block:Vec<String> = vec![];
+    let mut hex_str = String::from("0");
+    for i in data.into_iter(){
+        hex_str = format!("{:x}", &i);
+        new_block.push(hex_str);
+    }
+    return new_block.concat();
+}

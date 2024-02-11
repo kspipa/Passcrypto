@@ -1,7 +1,8 @@
 use std::fs;
+use std::fs::File;
 use std::io::prelude::*;
-use json;
 use dirs;
+use kpdb::{CompositeKey, Database, Entry, Group};
 
 pub fn create_new_file(path : String){
     fs::File::create(path).unwrap();
@@ -64,4 +65,49 @@ pub fn rmfile(path : String){
 }
 pub fn get_path_to_passs() -> String{
     return format!("{}/.passs", dirs::download_dir().unwrap().to_str().unwrap().to_string());
+}
+pub fn newdb(name: &str, key1: String) -> Database{
+    let key = CompositeKey::from_password(key1);
+    let db = Database::new(&key);
+    let mut file = File::create(format!("{}/{}.kdbx", get_path_to_passs(), name)).unwrap();
+    db.save(&mut file).unwrap();
+    return db;
+}
+pub fn open_db(name: &str, key1: String) -> Result<Database, kpdb::Error>{
+    let mut file = File::open(format!("{}/{}.kdbx", get_path_to_passs(), name)).unwrap();
+    let key = CompositeKey::from_password(key1);
+    let db = Database::open(&mut file, &key);
+    return db;
+}
+pub fn newgroup_db(name: &str, place: &mut Group){
+    let mut new_group = Group::new(name);
+    place.add_group(new_group);
+}
+pub fn newentry_db(place: &mut Group, title: &str,username: &str, password: &str, url: &str,notes: &str){
+    let mut new_entry = Entry::new();
+    new_entry.set_title(title);
+    new_entry.set_url(url);
+    new_entry.set_notes(notes);
+    new_entry.set_password(password);
+    new_entry.set_username(username);
+    place.add_entry(new_entry)
+}
+pub fn getgroups_db(place: &mut Group) -> Vec<String>{
+    let mut t = Vec::<String>::new();
+    for i in place.groups.clone(){
+        t.push(i.name);
+    }
+    return t;
+}
+pub fn getentries_db(place: &mut Group) -> Vec<String>{
+    let mut t = Vec::<String>::new();
+    for i in place.entries.clone(){
+        t.push(i.title().unwrap().to_string());
+    }
+    return t;
+}
+pub fn savedb(db: Database, name: String){
+    rmfile(format!("{}/{}.kdbx", get_path_to_passs(), name));
+    let mut new = File::create(format!("{}/{}.kdbx", get_path_to_passs(), name)).unwrap();
+    db.save(&mut new);
 }
