@@ -3,7 +3,7 @@ use std::io::{Write, stdout, stdin};
 mod pass;
 mod file;
 
-fn main() {
+pub fn serverstart() {
     println!("Passcrypto server - server for password storage");
     println!("Enter 'help' for get all commands");
     let path = format!("{}/passcrypto", file::get_path_to_passs());

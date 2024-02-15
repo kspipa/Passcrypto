@@ -2,7 +2,7 @@ use sha2::{Digest , Sha256};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 use clipboard::{ClipboardProvider, ClipboardContext};
-
+use rpassword;
 
 pub fn pad(pass : &[u8]) -> Vec<u8>{
     let mut hh: Vec<u8> = vec![0];
@@ -65,4 +65,7 @@ pub fn generate_password(num: usize) -> String{
 pub fn copy_to_clipboard(text : String){
     let mut clip : ClipboardContext = clipboard::ClipboardProvider::new().unwrap();
     clip.set_contents(text);
+}
+pub fn getpass() -> String{
+    return rpassword::prompt_password("Your password: ").unwrap();
 }

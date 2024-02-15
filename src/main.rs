@@ -1,16 +1,32 @@
 use cursive::Cursive;
 use cursive::views::*;
 use cursive::traits::*;
-use kpdb::Database;
 use std::collections::HashMap;
 mod aes256;
 mod pass;
-mod db;
-mod ui;
+mod file;
+mod server;
 fn main(){
+    let neg = std::env::args();
+    let mut gsd = Vec::<String>::new();
+    for i in neg{
+        gsd.push(i);
+    }
+    if gsd.len() > 1{
+        if gsd[1] == "-h".to_string(){
+            println!("Passcrypto 1.0.0\nHow to use:\n   --server : turn in the server mode\n");
+            return;
+        }
+        else if gsd[1] == "--server".to_string() {
+            server::serverstart()
+        }
+    }
     let mut siv = cursive::default();
-    if !db::check_dir(db::get_path_to_passs()){
-        db::mkdir(db::get_path_to_passs());
+    if !file::check_dir(file::get_path_to_passs()){
+        file::mkdir(file::get_path_to_passs());
+        start(&mut siv, true);
+    }
+    else if !file::check_file(format!("{}/checkpass", file::get_path_to_passs())){
         start(&mut siv, true);
     }
     else{
@@ -18,18 +34,24 @@ fn main(){
     }
     siv.run();
 }
+fn get_pass(key : Vec<u8>){
+    let path = format!("{}/checkpass", file::get_path_to_passs());
+    file::create_new_file(path.clone());
+    let data = encrypt_thats_all("TRUE".as_bytes().to_vec(), key.clone());
+    file::write_into(aes256::concat_from_blocks_to_arr(data), path);
+}
 fn get_passwords_from_files() -> HashMap<Vec<u8> , i8>{
     let mut res : HashMap<Vec<u8>, i8> = HashMap::new();
-    for i in db::get_all_ps(db::get_path_to_passs()){
-        let data = db::read_from(format!("{}/{i}.ps", db::get_path_to_passs()));
+    for i in file::get_all_ps(file::get_path_to_passs()){
+        let data = file::read_from(format!("{}/{i}.ps", file::get_path_to_passs()));
         res.insert(data, i as i8);
     }
     return res;
 }
 fn get_hashes_from_decr_files(key : Vec<u8>) -> HashMap<Vec<u8> , i8>{
     let mut res : HashMap<Vec<u8>, i8> = HashMap::new();
-    for i in db::get_all_ps(db::get_path_to_passs()){
-        let data = db::read_from(format!("{}/{i}.ps", db::get_path_to_passs()));
+    for i in file::get_all_ps(file::get_path_to_passs()){
+        let data = file::read_from(format!("{}/{i}.ps", file::get_path_to_passs()));
         res.insert(pass::get_hash_from_pass(decrypt_thats_all(data, key.clone()).as_mut_slice()), i as i8);
     }
     return res;
@@ -55,24 +77,29 @@ fn decrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<u8>{
     let yy = pass::unpad(jj);
     return yy;
 }
-fn check_pass(key : String, name: &str) -> bool{
-    match db::open_db(name, key){
-        Ok(_) => true,
-        Err(_) => false
+fn check_pass(key : Vec<u8>) -> bool{
+    let data = file::read_from(format!("{}/checkpass", file::get_path_to_passs()));
+    let decinfo = decrypt_thats_all(data, key);
+    let res = pass::from_vec_to_string(decinfo.to_vec());
+    if res == "TRUE".to_string(){
+        return true;
+    }
+    else {
+        return false;
     }
 }
 fn write_pass(password : &String, key : Vec<u8>, mut passs : HashMap<Vec<u8>, i8>, num : u8) -> HashMap<Vec<u8>, i8>{
     let hash = pass::get_hash_from_pass(password.as_bytes());
-    let mut t = match db::get_all_ps(db::get_path_to_passs()).last(){
+    let mut t = match file::get_all_ps(file::get_path_to_passs()).last(){
         None => 0,
         Some(h) => *h + 1
     };
     if num == 120{}
     else {t = num;}
-    let newfilepath = format!("{}/{}.ps", db::get_path_to_passs(), t.clone());
-    db::create_new_file(newfilepath.clone());
+    let newfilepath = format!("{}/{}.ps", file::get_path_to_passs(), t.clone());
+    file::create_new_file(newfilepath.clone());
     let encryptedpass = encrypt_thats_all(password.as_bytes().to_vec(), key.clone());
-    db::write_into(aes256::concat_from_blocks_to_arr(encryptedpass.clone()), newfilepath);
+    file::write_into(aes256::concat_from_blocks_to_arr(encryptedpass.clone()), newfilepath);
     passs.insert(hash, t as i8);
     return passs;
 }
@@ -91,15 +118,15 @@ fn start(siv : &mut Cursive, first_or_not : bool) {
         .child( EditView::new().secret().with_name("password"))
         .child(DummyView)
         .child(LinearLayout::horizontal().child(Button::new("Quit", Cursive::quit)).child(ResizedView::with_fixed_size((15, 0),DummyView)).child(Button::new("Ok", move |x| {
-            let key = pass::to_hex(pass::get_hash_from_pass(x.call_on_name("password", |v : &mut EditView| {v.get_content()}).unwrap().as_bytes()).as_slice());
+            let key = pass::get_hash_from_pass(x.call_on_name("password", |v : &mut EditView| {v.get_content()}).unwrap().as_bytes());
+            let mut rr : HashMap<Vec<u8>, i8> = HashMap::new();
             if first_or_not{
-                let mut database = db::newdb("Passcrypto", key);
-                right(x, &mut database);
+                get_pass(key.clone());
+                right(x, &mut rr, key);
             }
             else {
-                if check_pass(key.clone(), "Passcrypto"){
-                    let mut database = db::open_db("Passcrypto", key).unwrap();
-                    right(x, &mut database);
+                if check_pass(key.clone()){
+                    right(x, &mut get_hashes_from_decr_files(key.clone()), key);
                 }
                 else {
                     dont_right(x);
@@ -111,15 +138,15 @@ fn start(siv : &mut Cursive, first_or_not : bool) {
 fn dont_right(ui : &mut Cursive){
     ui.add_layer(Dialog::info("Your password is wrong"));
 }
-fn right(ui : &mut Cursive, database : &mut Database){
-    ui.set_user_data(database.clone());
+fn right(ui : &mut Cursive, passs : &mut HashMap<Vec<u8>, i8>, key : Vec<u8>){
+    ui.set_user_data(passs.clone());
     ui.call_on_name("password", |b : &mut EditView| {b.set_content("")});
+    let (_jj, hh, hj, newkey) = (key.clone(), key.clone(), key.clone(), key.clone());
     let select = SelectView::<String>::new().on_submit( move |x: &mut Cursive , c : &str| {get_compass(x, _jj.clone(), c)}).with_name("select").fixed_size((100, 5));
     let dialog = Dialog::around(LinearLayout::vertical()
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Write new", move |g: &mut Cursive| {get_compass(g, hh.clone(), "");})))
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Change", move |g| {let info = g.call_on_name("select", |v : &mut SelectView| {return v.selection().unwrap();}).unwrap();get_compass(g, hj.clone(), info.as_str());})))
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Delete", move |g| {delete_pass(g);})))
-        .child(DummyView.fixed_size((5, 38)))
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Quit", |g| {g.pop_layer();})))).fixed_size((50, 100));
     ui.add_layer(Dialog::around(LinearLayout::horizontal().child(Dialog::around(select)).child(DummyView.fixed_size((75, 5))).child(dialog)).fixed_size((200, 100)));
     for i in get_passwords_from_files(){
@@ -145,8 +172,8 @@ fn delete_pass(s: &mut Cursive) -> i8 {
             if _num == 120{
                 return 120;
             }
-            let path = format!("{}/{}.ps", db::get_path_to_passs(), _num);
-            db::rmfile(path);
+            let path = format!("{}/{}.ps", file::get_path_to_passs(), _num);
+            file::rmfile(path);
             return _num;
         }
     }
