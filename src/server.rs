@@ -1,4 +1,4 @@
-use std::net;
+mod net;
 use std::io::{Write, stdout, stdin};
 mod pass;
 mod file;

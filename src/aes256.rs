@@ -1,19 +1,18 @@
-use aes::Aes256;
-use aes::cipher::{BlockEncrypt, BlockDecrypt, KeyInit};
+use openssl::symm::*;
 
 pub fn encrypt_data<'a>(data : &[u8], key : &'a [u8]) -> Vec<u8>{
-    let cipher = Aes256::new(key.into());
-    let mut nn = data.to_vec();
-    let sdasd: &mut [u8] = nn.as_mut();
-    cipher.encrypt_block(sdasd.into());
-    return sdasd.to_vec();
+    let mut output = vec![0; data.len()+16];
+    let mut l = Crypter::new(Cipher::aes_256_ecb(), Mode::Encrypt, key, Option::None).unwrap();
+    l.pad(false);
+    l.update(data, output.as_mut_slice());
+    return output[0..data.len()].to_vec();
 }
 pub fn decrypt_data(data : &[u8], key : &[u8]) -> Vec<u8>{
-    let cipher = Aes256::new(key.into());
-    let mut nn = data.to_vec();
-    let sdasd: &mut [u8] = nn.as_mut();
-    cipher.decrypt_block(sdasd.into());
-    return sdasd.to_vec();
+    let mut output = vec![0; data.len()+16];
+    let mut l = Crypter::new(Cipher::aes_256_ecb(), Mode::Decrypt, key, Option::None).unwrap();
+    l.pad(false);
+    l.update(data, output.as_mut_slice());
+    return output[0..data.len()].to_vec();
 }
 pub fn spilt_into_bloks(list : Vec<u8>) -> Vec<Vec<u8>>{
     let mut vect = vec![vec![0]];

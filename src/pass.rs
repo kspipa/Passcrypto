@@ -2,10 +2,84 @@ use sha2::{Digest , Sha256};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 use clipboard::{ClipboardProvider, ClipboardContext};
+use json::JsonValue;
 
-
+#[derive(Clone)]
+pub struct Passcryptopass{
+    title : String,
+    username: String,
+    password: String,
+    url: String,
+    notes: String
+}
+impl Passcryptopass{
+    pub fn new() -> Self{
+        return Passcryptopass{title: "".to_string(), username: "".to_string(), password: "".to_string(), url: "".to_string(), notes: "".to_string()};
+    }
+    pub fn from_json(json: JsonValue) -> Self{
+        let mut res = Passcryptopass::new();
+        res.set_title(json["name"].as_str().unwrap().replace('"', ""));
+        res.set_username(json["username"].as_str().unwrap().replace('"', ""));
+        res.set_password(json["password"].as_str().unwrap().replace('"', ""));
+        res.set_url(json["url"].as_str().unwrap().replace('"', ""));
+        res.set_notes(json["notes"].as_str().unwrap().replace('"', ""));
+        return res;
+    }
+    pub fn to_vec(&mut self) -> Vec<String>{
+        Vec::<String>::from([self.get_title(), self.get_username(), self.get_password(), self.get_url(), self.get_notes()])
+    }
+    pub fn from_vec(vec: Vec<String>) -> Self{
+        let mut t = Passcryptopass::new();
+        t.set_title(vec[0].clone());
+        t.set_username(vec[1].clone());
+        t.set_password(vec[2].clone());
+        t.set_url(vec[3].clone());
+        t.set_notes(vec[4].clone());
+        return t;
+    }
+    pub fn to_json(&mut self) -> JsonValue{
+        let mut res = json::JsonValue::new_object();
+        res["name"] = self.get_title().into();
+        res["username"] = self.get_username().into();
+        res["password"] = self.get_password().into();
+        res["url"] = self.get_url().into();
+        res["notes"] = self.get_notes().into();
+        return res;
+    }
+    pub fn get_title(&mut self) -> String{
+        self.title.clone()
+    }
+    pub fn get_username(&mut self) -> String{
+        self.username.clone()
+    }
+    pub fn get_password(&mut self) -> String{
+        self.password.clone()
+    }
+    pub fn get_url(&mut self) -> String{
+        self.url.clone()
+    }
+    pub fn get_notes(&mut self) -> String{
+        self.notes.clone()
+    }
+    pub fn set_title(&mut self, data: String){
+        self.title = data;
+    }
+    pub fn set_username(&mut self, data: String){
+        self.username = data;
+    }
+    pub fn set_password(&mut self, data: String){
+        self.password = data;
+    }
+    pub fn set_url(&mut self, data: String){
+        self.url = data;
+    }
+    pub fn set_notes(&mut self, data: String){
+        self.notes = data;
+    }
+    
+}
 pub fn pad(pass : &[u8]) -> Vec<u8>{
-    let mut hh: Vec<u8> = vec![0];
+    let mut hh = vec![0];
     let len = pass.len() + 1;
     let lastofblock = (len)%16;
     let mut t = 1;
