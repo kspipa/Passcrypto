@@ -55,19 +55,35 @@ pub fn get_path_to_passs() -> String{
     return format!("{}/.passs", dirs::download_dir().unwrap().to_str().unwrap().to_string());
 }
 pub fn newdb(filepath : String, key: Vec<u8>) -> Jsondb{
-    create_new_file(filepath.clone());
-    let data = Jsondb::new(key, filepath);
+    let data = Jsondb::new(key, filepath.clone());
+    rewrite(filepath, data.clone().to_string().as_bytes().to_vec());
     return data;
 }
-pub fn parse(data: &str) -> JsonValue{
-    let parseddata = json::parse(data).unwrap();
+pub fn parse(data: &str) -> Result<JsonValue, json::Error>{
+    let parseddata = json::parse(data);
     return parseddata;
 }
+pub fn getpathwithoutps(path : String, leg : usize) -> String{
+    let len = path.split("/").count();
+    let mut newstring = String::new();
+    let mut t = 0;
+    for i in path.split("/"){
+        if i == ""{
+            t += 1;
+            continue;
+        }
+        if t == len -leg{
+            break;
+        }
+        newstring += format!("/{}", i).as_str();
+        t += 1
+    }
+    return newstring;
 
+}
 #[derive(Clone)]
 pub struct Jsondb{
     json: JsonValue,
-    posit: JsonValue,
     pub positpath: String,
     pub filepath: String,
     pub key: Vec<u8>
@@ -77,10 +93,10 @@ impl Jsondb{
         let mut data = json::JsonValue::new_object();
         data["root"]["dirs"] = json::JsonValue::new_array();
         data["root"]["pass"] = json::JsonValue::new_array();
-        Jsondb{json: data,posit:json::JsonValue::new_object(), filepath: filepath, key, positpath: "/".to_string()}
+        Jsondb{json: data, filepath: filepath, key, positpath: "".to_string()}
     }
     pub fn from(text : &str, key: Vec<u8>, filepath : String) -> Self{
-        Jsondb{filepath :"".to_string(), json: json::parse(text).unwrap(),posit:json::JsonValue::new_object(), key,positpath: "/".to_string()}
+        Jsondb{filepath :filepath, json: json::parse(text).unwrap(), key,positpath: "".to_string()}
     }
     pub fn add_pass(&mut self,path: &str, mut pass : JsonValue){
         let db = self.gotupath(path).unwrap();
@@ -99,17 +115,21 @@ impl Jsondb{
     pub fn to_string(&mut self) -> String{
         self.json.dump()
     }
-    pub fn getall(&mut self, path : &str) -> Vec<JsonValue>{
+    pub fn getall(&mut self, path : Option<&str>) -> Option<Vec<JsonValue>>{
         let mut res = Vec::<JsonValue>::new();
-        for i in self.get_dirs(Some(path)){
+        match self.get_dirs(path){
+            Some(_) => (),
+            None => return None
+        }
+        for i in self.get_dirs(path).unwrap(){
             res.push(i)
         }
-        for i in self.get_passs(Some(path)){
+        for i in self.get_passes(path).unwrap(){
             res.push(i);
         }
-        return res;
+        return Some(res);
     }
-    pub fn deletebypath(&mut self, path: &str){
+    pub fn deletebypath(&mut self, path: &str, pass : bool){
         let size = path.split("/").count();
         let mut truepath = String::new();
         let mut t = 0;
@@ -122,81 +142,110 @@ impl Jsondb{
             truepath += &format!("/{}", i);
             t += 1;
         }
+        if truepath == "/".to_string(){
+            truepath = "".to_string();
+        }
         let mut nn = self.gotupath(&truepath).unwrap();
-        for d in 0..nn.len(){
-            if nn["pass"][d]["name"] == name{
-                nn["pass"].array_remove(d);
+        let mut rea = String::new();
+        if pass{
+            rea = "pass".to_string()
+        }
+        else{
+            rea = "dirs".to_string()
+        }
+        for d in 0..nn[&rea].len(){
+            if nn[&rea][d]["name"].to_string() == name.to_string(){
+                nn[&rea].array_remove(d);
             }
         }
     }
-    pub fn get_passs(&mut self, path: Option<&str>) -> Vec<JsonValue>{
-        let mut db = &mut JsonValue::new_object();
-        if path.is_some(){
-            db = self.gotupath(path.unwrap()).unwrap();
+    pub fn get_pass(&mut self, path : &str) -> Option<&mut JsonValue>{
+        if path.contains(".ps"){
+            let t = self.gotupath(path);
+            return self.gotupath(path);
         }
-        else {
-            db = &mut self.posit;
+        else{
+            return None;
         }
-        let l = self.gotupath(path.unwrap()).unwrap();
-        let mut res = Vec::<JsonValue>::new();
-        for i in 0..l["pass"].len(){
-            res.push(l["pass"][i].clone())
-        }
-        return res;
     }
-    pub fn get_dirs(&mut self, path: Option<&str>) -> Vec<JsonValue>{
+    pub fn get_passes(&mut self, path: Option<&str>) -> Option<Vec<JsonValue>>{
         let mut db = &mut JsonValue::new_object();
         if path.is_some(){
-            db = self.gotupath(path.unwrap()).unwrap();
+            db = match self.gotupath(path.unwrap()){
+                Some(t) => t,
+                None => return None
+            }
         }
         else {
-            db = &mut self.posit;
+            db = self.gotupath(&self.positpath.clone()).unwrap();
         }
-        
+        let mut res = Vec::<JsonValue>::new();
+        for i in 0..db["pass"].len(){
+            res.push(db["pass"][i].clone())
+        }
+        return Some(res);
+    }
+    pub fn get_dirs(&mut self, path: Option<&str>) -> Option<Vec<JsonValue>>{
+        let mut db = &mut JsonValue::new_object();
+        if path.is_some(){
+            db = match self.gotupath(path.unwrap()){
+                Some(t) => t,
+                None => return None
+            }
+        }
+        else {
+            db = self.gotupath(&self.positpath.clone()).unwrap();
+        }
         let mut res = Vec::<JsonValue>::new();
         for i in 0..db["dirs"].len(){
             res.push(db["dirs"][i].clone());
         }
-        return res;
+        return Some(res);
     }
-    fn gotupath(&mut self, path : &str) -> Option<&mut JsonValue>{
+    pub fn gotupath(&mut self, path : &str) -> Option<&mut JsonValue>{
+        let len = path.split("/").count();
         let db = &mut self.json;
         let mut startpos = &mut db["root"];
-        let len = path.split("/").count();
-        if path == "/"{
+        if path == ""{
+            self.positpath = "".to_string();
             return Some(startpos);
         }
+        let mut count = 0;
         for (j, i) in path.split('/').enumerate(){
-            if i.find(".ps").is_some(){
+            if i.contains(".ps"){
                 for g in 0..startpos["pass"].len(){
                     if startpos["pass"][g]["name"].as_str().unwrap().replace('"', "") == i{
                         let mut t = 0;
-                        self.positpath = String::new();
-                        for i in path.split("/"){
-                            if t == len - 1{
-                                break;
-                            }
-                            self.positpath += &format!("/{}", i); 
-                            t += 1;
+                        if len == 2{
+                            self.positpath = "".to_string();
+                        }
+                        else {
+                            self.positpath = getpathwithoutps(path.to_string(), 1);
                         }
                         return Some(&mut startpos["pass"][g]);
                     }
                 }
+                return None;
             }
             for d in 0..startpos["dirs"].len(){
                 if startpos["dirs"][d]["name"].as_str().unwrap().replace('"', "") == i{
                     if (j + 1) == len{
-                        self.positpath = String::new();
-                        for i in path.split("/"){
-                            self.positpath += &format!("/{}", i);
-                        }
+                        self.positpath = path.to_string();
                         return Some(&mut startpos["dirs"][d]);
                     }
                     startpos = &mut startpos["dirs"][d];
+                    break;
                 }
             }
         }
         return None;
     }
-
+}
+pub fn check_files_in_dir(path: &String) -> Vec<String>{
+    let paths = fs::read_dir(path).unwrap();
+    let mut res = Vec::<String>::new();
+    for i in paths {
+        res.push(i.unwrap().path().display().to_string())
+    }
+    return res;
 }

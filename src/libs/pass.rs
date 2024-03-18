@@ -82,12 +82,10 @@ pub fn pad(pass : &[u8]) -> Vec<u8>{
     let mut hh = vec![0];
     let len = pass.len() + 1;
     let lastofblock = (len)%16;
-    let mut t = 1;
     let mut rng = rand::thread_rng();
     hh[0] = 0;
     for i in pass{
         hh.push(*i);
-        t += 1;
     }
     let pos = 16 - lastofblock;
     if len % 16 != 0 {
@@ -95,12 +93,12 @@ pub fn pad(pass : &[u8]) -> Vec<u8>{
             hh.push(rng.gen());
         }
     }
-    let the_last_hope = t as u8;
+    let the_last_hope = pos as u8;
     hh[0] = the_last_hope;
     return hh;
 }
 pub fn unpad(mut changed_pass : Vec<u8>) -> Vec<u8>{
-    let nigofall = changed_pass[0] as usize;
+    let nigofall = changed_pass.len() - changed_pass[0] as usize;
     if nigofall >= changed_pass.len(){
         return changed_pass;
     }
@@ -138,5 +136,8 @@ pub fn generate_password(num: usize) -> String{
 }
 pub fn copy_to_clipboard(text : String){
     let mut clip : ClipboardContext = clipboard::ClipboardProvider::new().unwrap();
-    clip.set_contents(text);
+    let _ = clip.set_contents(text);
+}
+pub fn getpass() -> String{
+    return rpassword::prompt_password("Your password: ").unwrap();
 }

@@ -1,8 +1,6 @@
-mod net;
 use std::io::{Write, stdout, stdin};
-mod pass;
-mod file;
-
+#[path = "libs/mod.rs"] mod thing;
+use thing::*;
 pub fn serverstart() {
     println!("Passcrypto server - server for password storage");
     println!("Enter 'help' for get all commands");
