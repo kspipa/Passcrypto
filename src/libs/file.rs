@@ -93,6 +93,7 @@ impl Jsondb{
         let mut data = json::JsonValue::new_object();
         data["root"]["dirs"] = json::JsonValue::new_array();
         data["root"]["pass"] = json::JsonValue::new_array();
+        data["root"]["name"] = "".into();
         Jsondb{json: data, filepath: filepath, key, positpath: "".to_string()}
     }
     pub fn from(text : &str, key: Vec<u8>, filepath : String) -> Self{

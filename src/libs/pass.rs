@@ -139,5 +139,5 @@ pub fn copy_to_clipboard(text : String){
     let _ = clip.set_contents(text);
 }
 pub fn getpass() -> String{
-    return rpassword::prompt_password("Your password: ").unwrap();
+    return rpassword::prompt_password("Password: ").unwrap();
 }
