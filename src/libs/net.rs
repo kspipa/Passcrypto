@@ -1,18 +1,24 @@
 use std::io::{Write, Read};
-use std::net::{TcpListener, TcpStream, SocketAddr};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::thread;
  
 
-pub fn start(addr : &str) {
-    let server: SocketAddr = addr.parse().expect("Unable to parse socket address");
-    let listener = TcpListener::bind(server).unwrap();
-    for stream in listener.incoming() {
-        let stream = stream.unwrap();
- 
-        thread::spawn(|| {
-            handle_client(stream);
-        });
-    }
+pub fn start(addr : &str) -> u8{
+    let listener = match TcpListener::bind(addr){
+        Ok(t) => t,
+        Err(_) => return 3,
+    };
+    thread::spawn(move ||{
+        for stream in listener.incoming() {
+            let stream = stream.unwrap();
+     
+            thread::spawn(|| {
+                handle_client(stream);
+            });
+        };
+    });
+
+    return 0;
 }
  
 fn handle_client(mut stream: TcpStream) {
@@ -45,4 +51,10 @@ pub fn client(addr: &str) {
         println!("{}", String::from_utf8_lossy(&buffer));
         message = "".to_string();
     }
+}
+pub fn server_auth(mut stream: TcpStream){
+    
+}
+pub fn webwrite(mut stream: TcpStream, command : String){
+
 }

@@ -19,7 +19,8 @@ fn main(){
             return;
         }
         else if gsd[1] == "--server".to_string() {
-            server::serverstart()
+            server::serverstart();
+            return;
         }
         else if gsd[1] == "--cli" {
             clistart();
@@ -32,14 +33,14 @@ fn main(){
 }
 fn get_pass(key : Vec<u8>, path : &str , db : &mut Jsondb){
     let data = encrypt_thats_all(["TRUE".as_bytes().to_vec(), db.to_string().into_bytes()].concat(), key.clone());
-    file::write_into(aes256::concat_from_blocks_to_arr(data), path.to_string());
+    file::write_into(data, path.to_string());
 }
 fn get_hashes_from_decr_files(path: &str, key : Vec<u8>) -> Jsondb{
     let decrdata = &pass::from_vec_to_string(decrypt_thats_all(file::read_from(path.to_string()).to_vec(), key.clone()));
     let res = Jsondb::from(&decrdata[4..decrdata.len()],key.clone(), path.to_string());
     return res;
 }
-fn encrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<Vec<u8>> {
+fn encrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<u8> {
     let binding = pass::pad(data.as_slice());
     let newstr = aes256::spilt_into_bloks(binding);
     let mut nvec:Vec<Vec<u8>> = vec![vec![0]];
@@ -47,7 +48,7 @@ fn encrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<Vec<u8>> {
     for i in newstr{
         nvec.push(aes256::encrypt_data(i.as_slice(), key.as_slice()));
     }
-    return nvec;
+    return aes256::concat_from_blocks_to_arr(nvec);
 }
 fn decrypt_thats_all(data : Vec<u8>, key : Vec<u8>) -> Vec<u8>{
     let mm = aes256::spilt_into_bloks(data);
@@ -84,7 +85,7 @@ fn getstring(out : &str) -> String{
 fn write(db : &mut Jsondb){
     let filepath = db.filepath.clone();
     let encryptedpass = encrypt_thats_all(["TRUE".as_bytes().to_vec(), db.to_string().as_bytes().to_vec()].concat(), db.key.to_vec());
-    file::rewrite(filepath, aes256::concat_from_blocks_to_arr(encryptedpass.clone()));
+    file::rewrite(filepath, encryptedpass.clone());
 }
 fn clistart(){
     let path = getstring("Path : ");
@@ -325,7 +326,7 @@ fn right(ui : &mut Cursive, passs : Jsondb){
         .child(LinearLayout::horizontal().child(TextView::new("Password : ")).child(TextView::new("").with_name("password").fixed_size((80, 1))))
         .child(LinearLayout::horizontal().child(TextView::new("Url      : ")).child(TextView::new("").with_name("url").fixed_size((80, 1))))
         .child(LinearLayout::horizontal().child(TextView::new("Notes    : ")).child(TextView::new("").with_name("notes").fixed_size((80, 1))))).fixed_size((110,20));
-    let dialog = Dialog::around(LinearLayout::vertical()
+    let dialog = Dialog::around(LinearLayout::vertical().child(Dialog::around(LinearLayout::vertical()
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Write new", move |g: &mut Cursive| {get_compass(g, None, None)})))
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Change", move |g| {
             if get_selected_name(g).contains(".ps"){
@@ -336,7 +337,7 @@ fn right(ui : &mut Cursive, passs : Jsondb){
             }
         })))
         .child(ResizedView::with_fixed_size((5, 2), Button::new("Delete", move |g| {let mut hass = g.user_data::<Jsondb>().unwrap().clone();delete(g, &mut hass);g.set_user_data(hass)})))
-        .child(ResizedView::with_fixed_size((5, 2), Button::new("Quit", |g| {g.pop_layer();})))).fixed_size((50, 100));
+        .child(ResizedView::with_fixed_size((5, 2), Button::new("Quit", |g| {g.pop_layer();})))))).fixed_size((50, 100));
     let firstmenu = SelectView::<String>::new().on_submit(|s: &mut Cursive, xsize: &String| {
         let path = s.with_user_data(|hash :  &mut Jsondb| {return hash.positpath.clone();}).unwrap();
         if xsize.contains(".."){
@@ -355,6 +356,8 @@ fn right(ui : &mut Cursive, passs : Jsondb){
         add_in_list(i["name"].to_string(), ui)
     }
 }
+
+
 fn gotu(s : &mut Cursive, path : &str){
     let mut passs = s.with_user_data(|hash :  &mut Jsondb| {return hash.clone();}).unwrap();
     let newhero = match passs.gotupath(path){
@@ -401,7 +404,6 @@ fn get_compass(ui : &mut Cursive, data : Option<Passcryptopass>, dirdata: Option
                 }
                 delete(x, &mut hass);
                 hass.add_pass(&hass.positpath.clone(), all_string.clone().to_json());
-                write(&mut hass);
                 x.set_user_data(hass);
                 add_in_list(all_string.get_title().clone(), x);
                 x.pop_layer();
@@ -423,10 +425,8 @@ fn get_compass(ui : &mut Cursive, data : Option<Passcryptopass>, dirdata: Option
                 }
                 let fulpath = format!("{}/{}", hass.positpath, dirdata.clone().unwrap());
                 hass.gotupath(&fulpath).unwrap()["name"] = all_string.clone().into();
-                let mut select = x.find_name::<SelectView<String>>("select1").unwrap();
-                let id = select.selected_id().unwrap();
-                select.remove_item(id);
-                write(&mut hass);
+                hass.gotupath("");
+                delete(x, &mut hass);
                 x.set_user_data(hass);
                 add_in_list(all_string.clone(), x);
                 x.pop_layer();

@@ -1,18 +1,29 @@
-use openssl::symm::*;
-
+use aes::Aes256;
+use aes::cipher::{BlockEncrypt, BlockDecrypt, KeyInit};
+use x25519_dalek::{SharedSecret, EphemeralSecret, PublicKey};
+use rand_core::OsRng;
 pub fn encrypt_data<'a>(data : &[u8], key : &'a [u8]) -> Vec<u8>{
-    let mut output = vec![0; data.len()+16];
-    let mut l = Crypter::new(Cipher::aes_256_ecb(), Mode::Encrypt, key, Option::None).unwrap();
-    l.pad(false);
-    let _ = l.update(data, output.as_mut_slice());
-    return output[0..data.len()].to_vec();
+    let cipher = Aes256::new(key.into());
+    let mut nn = data.to_vec();
+    let sdasd: &mut [u8] = nn.as_mut();
+    cipher.encrypt_block(sdasd.into());
+    return sdasd.to_vec();
 }
 pub fn decrypt_data(data : &[u8], key : &[u8]) -> Vec<u8>{
-    let mut output = vec![0; data.len()+16];
-    let mut l = Crypter::new(Cipher::aes_256_ecb(), Mode::Decrypt, key, Option::None).unwrap();
-    l.pad(false);
-    let _ = l.update(data, output.as_mut_slice());
-    return output[0..data.len()].to_vec();
+    let cipher = Aes256::new(key.into());
+    let mut nn = data.to_vec();
+    let sdasd: &mut [u8] = nn.as_mut();
+    cipher.decrypt_block(sdasd.into());
+    return sdasd.to_vec();
+}
+pub fn get_diffie_helman_data() -> (PublicKey, EphemeralSecret){
+    let secret = EphemeralSecret::random_from_rng(OsRng);
+    let public = PublicKey::from(&secret);
+    return (public, secret);
+}
+pub fn diffie_helman(secret : EphemeralSecret, public : PublicKey) -> SharedSecret{
+    let sharedsecret = secret.diffie_hellman(&public);
+    return sharedsecret;
 }
 pub fn spilt_into_bloks(list : Vec<u8>) -> Vec<Vec<u8>>{
     let mut vect = vec![vec![0]];

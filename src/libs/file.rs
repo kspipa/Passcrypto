@@ -91,9 +91,11 @@ pub struct Jsondb{
 impl Jsondb{
     pub fn new(key: Vec<u8>, filepath : String) -> Self{
         let mut data = json::JsonValue::new_object();
+        data["users"] = json::JsonValue::new_array();
         data["root"]["dirs"] = json::JsonValue::new_array();
         data["root"]["pass"] = json::JsonValue::new_array();
         data["root"]["name"] = "".into();
+        data["root"]["perms"] = json::JsonValue::new_array();
         Jsondb{json: data, filepath: filepath, key, positpath: "".to_string()}
     }
     pub fn from(text : &str, key: Vec<u8>, filepath : String) -> Self{
@@ -103,6 +105,7 @@ impl Jsondb{
         let db = self.gotupath(path).unwrap();
         let f = db["pass"].len();
         db["pass"][f] = pass;
+        db["pass"][f]["perms"] = json::JsonValue::new_array();
     }
     pub fn add_dir(&mut self, path : &str, name: &str){
         let db = self.gotupath(path).unwrap();
@@ -111,8 +114,59 @@ impl Jsondb{
         db["dirs"][f]["dirs"] = json::JsonValue::new_array();
         db["dirs"][f]["pass"] = json::JsonValue::new_array();
         db["dirs"][f]["name"] = name.into();
+        db["dirs"][f]["perms"] = json::JsonValue::new_array();
     }
-
+    pub fn add_user(&mut self, user : (String, String, String)){
+        let mut res = json::JsonValue::new_object();
+        res["username"] = user.0.into();
+        res["password"] = user.1.into();
+        res["email"] = user.2.into();
+        let jsonf = &mut self.json["users"];
+        let len = jsonf.len().clone();
+        jsonf[len] = res;
+    }
+    pub fn set_perm(&mut self, path : &str, user : String, perm : &str){
+        let mut ss = self.gotupath(path).unwrap();
+        let len = ss["perms"].len();
+        ss["perms"][len] = json::JsonValue::new_object();
+        ss["perms"][len]["name"] = user.clone().into();
+        ss["perms"][len]["perm"] = perm.into();
+    }
+    pub fn get_perm(&mut self, path : &str, user : String) -> String{
+        let mut ss = self.gotupath(path).unwrap();
+        let len = ss["perms"].len();
+        for i in 0..len{
+            if ss["perms"][i]["name"].to_string() == user{
+                return ss["perms"][i]["perm"].to_string();
+            }
+        }
+        return String::from("");
+    }
+    pub fn clear_perm(&mut self, path : &str){
+        let mut ss = self.gotupath(path).unwrap();
+        ss["perms"].clear();
+    }
+    pub fn getusers(&mut self) -> Vec<(String, String, String)>{
+        let mut jsonf = &mut self.json["users"];
+        let len = jsonf.len().clone();
+        let mut ans = Vec::<(String, String, String)>::new();
+        for i in 0..len{
+            ans.push((jsonf[i]["username"].to_string(), jsonf[i]["password"].to_string(), jsonf[i]["email"].to_string()));
+        }
+        return ans;
+    }
+    pub fn deleteuser(&mut self, user : (String, String, String)) -> u8{
+        let mut jsonf = &mut self.json["users"];
+        let len = jsonf.len();
+        for i in 0..len{
+            let n = (jsonf[i]["username"].to_string().replace('"', ""), jsonf[i]["password"].to_string().replace('"', ""), jsonf[i]["email"].to_string().replace('"', ""));
+            if n == user{
+                jsonf.array_remove(i);
+                return 1;
+            }
+        }
+        return 0;
+    }
     pub fn to_string(&mut self) -> String{
         self.json.dump()
     }
@@ -130,12 +184,16 @@ impl Jsondb{
         }
         return Some(res);
     }
-    pub fn deletebypath(&mut self, path: &str, pass : bool){
+    pub fn deletebypath(&mut self, mut path: &str, pass : bool){
         let size = path.split("/").count();
         let mut truepath = String::new();
         let mut t = 0;
         let mut name = "";
         for i in path.split("/"){
+            if i == ""{
+                t+=1;
+                continue;
+            }
             if t == size - 1{
                 name = i;
                 break;
