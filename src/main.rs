@@ -1,6 +1,8 @@
 use cursive::Cursive;
 use cursive::views::*;
 use cursive::traits::*;
+use std::io::Read;
+use std::net::{SocketAddr, TcpListener, TcpStream};
 mod libs;
 use std::io::{Write, stdout};
 use libs::*;
@@ -24,6 +26,10 @@ fn main(){
         }
         else if gsd[1] == "--cli" {
             clistart();
+            return;
+        }
+        else if gsd[1] == "--clicon" {
+            cliconstart();
             return;
         }
     }
@@ -86,6 +92,17 @@ fn write(db : &mut Jsondb){
     let filepath = db.filepath.clone();
     let encryptedpass = encrypt_thats_all(["TRUE".as_bytes().to_vec(), db.to_string().as_bytes().to_vec()].concat(), db.key.to_vec());
     file::rewrite(filepath, encryptedpass.clone());
+}
+fn cliconstart(){
+    let ip = getstring("Ip:port : ");
+    let username = getstring("Username : ");
+    let password = pass::getpass();
+    let closekey = pass::fillwithrand();
+    let newclosekey = [vec![200, 215, 188, 50, 67, 90], closekey.clone()].concat();
+    let kk = pass::get_hash_from_pass([username.as_bytes(), password.as_bytes()].concat().as_mut_slice());
+    let authdata = encrypt_thats_all(newclosekey, kk);
+    client(&ip, &authdata, &closekey);
+
 }
 fn clistart(){
     let path = getstring("Path : ");
@@ -404,6 +421,7 @@ fn get_compass(ui : &mut Cursive, data : Option<Passcryptopass>, dirdata: Option
                 }
                 delete(x, &mut hass);
                 hass.add_pass(&hass.positpath.clone(), all_string.clone().to_json());
+                write(&mut hass);
                 x.set_user_data(hass);
                 add_in_list(all_string.get_title().clone(), x);
                 x.pop_layer();
@@ -423,9 +441,12 @@ fn get_compass(ui : &mut Cursive, data : Option<Passcryptopass>, dirdata: Option
                         Err(_) => {x.add_layer(Dialog::info("This dir already writen")); return;}
                     };
                 }
+                else {
+                    return;
+                }
                 let fulpath = format!("{}/{}", hass.positpath, dirdata.clone().unwrap());
                 hass.gotupath(&fulpath).unwrap()["name"] = all_string.clone().into();
-                hass.gotupath("");
+                hass.gotupath(&getpathwithoutps(fulpath.clone(), 1));
                 delete(x, &mut hass);
                 x.set_user_data(hass);
                 add_in_list(all_string.clone(), x);
@@ -531,4 +552,40 @@ fn set_info_to_list(x : &mut Cursive,mut password : Passcryptopass){
     x.call_on_name("password", |b: &mut TextView| {b.set_content(password.get_password().clone())}).unwrap();
     x.call_on_name("url", |b: &mut TextView| {b.set_content(password.get_url().clone())}).unwrap();
     x.call_on_name("notes", |b: &mut TextView| {b.set_content(password.get_notes().clone())}).unwrap();
+}
+fn client_auth(stream: &mut TcpStream, authdata : &[u8], newkey : &[u8]) -> u8{
+    let mut buf = [0; 2048];
+    let mut sixe = stream.read(&mut buf).unwrap();
+    let gg = &buf[0..sixe];
+    if gg != "200".as_bytes(){
+        return 0;
+    }
+    println!("{:?}", newkey.len());
+    stream.write(authdata);
+    buf = [0; 2048];
+    sixe = stream.read(&mut buf).unwrap();
+    println!("{}", sixe);
+    if decrypt_thats_all(buf[0..sixe].to_vec(), newkey.to_vec())[0] != 200{return 2;};
+    println!("{:?}", newkey);
+    return 1;
+}
+fn client(addr: &str, authdata : &[u8], newkey : &[u8]) {
+    let server: SocketAddr = addr.parse().expect("Unable to parse socket address");
+    let mut stream = TcpStream::connect(server).unwrap();
+    match client_auth(&mut stream, authdata, newkey){
+        2 => {println!("Problems with server");return;},
+        0 => {println!("Problems with connect");return;},
+        1 => {},
+        _ => {return;}
+    }
+    loop{
+        let req = getstring(">>");
+        let mut buf = [0;16384];
+        stream.write(encrypt_thats_all(req.as_bytes().to_vec(), newkey.to_vec()).as_mut_slice());
+        let sixe = stream.read(&mut buf).unwrap();
+        println!("{}", sixe);
+        let decrmes = pass::from_vec_to_string(decrypt_thats_all(buf[0..sixe].to_vec(), newkey.to_vec()));
+        println!("{}", decrmes);
+        stream.flush();
+    }
 }

@@ -1,5 +1,5 @@
 use sha2::{Digest , Sha256};
-use rand::{thread_rng, Rng};
+use rand::{thread_rng, Rng, RngCore};
 use rand::distributions::Alphanumeric;
 use clipboard::{ClipboardProvider, ClipboardContext};
 use json::JsonValue;
@@ -137,6 +137,11 @@ pub fn generate_password(num: usize) -> String{
 pub fn copy_to_clipboard(text : String){
     let mut clip : ClipboardContext = clipboard::ClipboardProvider::new().unwrap();
     let _ = clip.set_contents(text);
+}
+pub fn fillwithrand() -> Vec<u8>{
+    let mut mas: [u8; 32] = [0; 32];
+    thread_rng().fill_bytes(&mut mas);
+    return mas.to_vec();
 }
 pub fn getpass() -> String{
     return rpassword::prompt_password("Password: ").unwrap();
