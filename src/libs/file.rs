@@ -86,7 +86,8 @@ pub struct Jsondb{
     json: JsonValue,
     pub positpath: String,
     pub filepath: String,
-    pub key: Vec<u8>
+    pub key: Vec<u8>,
+    pub user: String
 }
 impl Jsondb{
     pub fn new(key: Vec<u8>, filepath : String) -> Self{
@@ -96,10 +97,10 @@ impl Jsondb{
         data["root"]["pass"] = json::JsonValue::new_array();
         data["root"]["name"] = "".into();
         data["root"]["perms"] = json::JsonValue::new_array();
-        Jsondb{json: data, filepath: filepath, key, positpath: "".to_string()}
+        Jsondb{json: data, filepath: filepath, key, positpath: "".to_string(), user : "".to_string()}
     }
     pub fn from(text : &str, key: Vec<u8>, filepath : String) -> Self{
-        Jsondb{filepath :filepath, json: json::parse(text).unwrap(), key,positpath: "".to_string()}
+        Jsondb{filepath :filepath, json: json::parse(text).unwrap(), key,positpath: "".to_string(), user : "".to_string()}
     }
     pub fn add_pass(&mut self,path: &str, mut pass : JsonValue){
         let db = self.gotupath(path).unwrap();

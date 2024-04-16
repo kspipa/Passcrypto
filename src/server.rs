@@ -173,9 +173,9 @@ fn treatment(jsaon : &mut Jsondb){
             let pp = data[2].clone();
             let tt = &format!("{}/{}", path, pp.clone()).clone();
             if data[2] == "/".to_string(){
-                pathu = pp.as_str();
+                pathu = "";
             }
-            if data[2].starts_with("/"){
+            else if data[2].starts_with("/"){
                 pathu = pp.as_str();
             }
             else {
@@ -199,6 +199,7 @@ fn treatment(jsaon : &mut Jsondb){
                 t += 1;
             }
             write(jsaon);
+            jsaon.gotupath(&path);
             continue;
         }
         if str.contains("start"){
@@ -293,45 +294,54 @@ pub fn netserver(addr : &str, jsaon : &mut Jsondb) -> u8{
  
 fn handle_client(mut stream: TcpStream, authdatas : Vec<Vec<u8>>, mut jsaon : Jsondb) {
     let mut key = server_auth(&mut stream, authdatas);
-    if key == "Bad mes".as_bytes().to_vec(){println!("Bad message");return;};
+    if key.1 == "Bad mes".as_bytes().to_vec(){println!("Bad message");return;};
+    let users = jsaon.getusers();
+    let mut t = 0;
+    for i in users{
+        if t == key.0{
+            jsaon.user = i.0;
+            break;
+        }
+        t += 1;
+    }
     loop {
         let mut buf = [0;16384];
         let sixe = stream.read(&mut buf).unwrap();
-        cliright(&mut jsaon, pass::from_vec_to_string(decrypt_thats_all(buf[0..sixe].to_vec(), key.clone())), &mut stream, key.clone());
+        cliright(&mut jsaon, pass::from_vec_to_string(decrypt_thats_all(buf[0..sixe].to_vec(), key.clone().1)), &mut stream, key.clone().1);
         stream.flush();
     }
 }
  
 
-pub fn server_auth(stream: &mut TcpStream, authdatas : Vec<Vec<u8>>) -> Vec<u8>{
+pub fn server_auth(stream: &mut TcpStream, authdatas : Vec<Vec<u8>>) -> (u8, Vec<u8>){
     let mut buf = [0;16384];
     stream.write("200".as_bytes());
     let sixe = stream.read(&mut buf).unwrap();
     let mut key = Vec::new();
     let mut t = 0;
+    let mut y = 0;
     for i in authdatas{
         if decrypt_thats_all(buf[0..sixe].to_vec(), i.clone())[0..6] == [200, 215, 188, 50, 67, 90]{
             key = decrypt_thats_all(buf[0..sixe].to_vec(), i);
-            println!("{:?}", key);
             for i in 0..6{
                 key.remove(0);
             }
-            println!("{:?}", key);
             t += 1;
             break;
         }
+        y += 1;
     }
     if t == 0{
-        return "Bad mes".as_bytes().to_vec();
+        return (0,"Bad mes".as_bytes().to_vec());
     }
     let kk = &encrypt_thats_all(vec![200], key.clone());
     stream.write(kk);
-    return key;
+    return (y,key);
 }
 fn cliright(db : &mut Jsondb, ans : String, stream: &mut TcpStream, key : Vec<u8>){
     let path = db.positpath.clone();
     match ans.as_str(){
-        "ls" => {let mut l = String::new();for i in db.getall(None).unwrap(){l += format!("\n{}", i["name"].to_string()).as_str();}webwrite(l.as_bytes(), key, stream);return;},
+        "ls" => {if checkperm(if path == "/".to_string(){""}else{&path}, "r", db) == false{webwrite(b"You have no permisiaons for this operation", key.clone(), stream);return;};let mut l = String::new();for i in db.getall(None).unwrap(){l += format!("{}\n", i["name"].to_string()).as_str();}webwrite(l.as_bytes(), key, stream);return;},
         "help" => {webwrite(b"ls : get dirs and passes in dir\ncat <passname> : get info from password\nmkdir <name>: add new dir\ntouch <title> <username> <password> <url> <notes>: add new pass\n      There are also some special signs to indicate different commands:\n          <!> : if any cell is empty\n          <&<num>> : if you want get random letters in cell. <Num> is number of letters\n          if there is more than one word in a cell, put it in <>\n          Examples : \n            touch github kspipa &15 https://github.com/ <This is password from github!>\n            touch Gmail ! password123123 gmail.com !\ncd <dirname>: go to dir\npwd : get current location\nrm <name>: delete dir or pass\nch <name>: change data in dir or pass\ncp : copy password from pass to the clipboard\nexit : exit from database", key,stream);return;},
         "pwd" => {webwrite(format!("{}",path).as_bytes(),key,stream);return;},
         "exit" => return,
@@ -340,9 +350,11 @@ fn cliright(db : &mut Jsondb, ans : String, stream: &mut TcpStream, key : Vec<u8
     }
     if ans.contains("mkdir"){
         let name = ans.replace("mkdir ", "");
+        if checkperm(if path == "/".to_string(){""}else{&path}, "w", db) == false{webwrite(b"You have no permisiaons for this operation", key.clone(), stream);return;};
         if check_hashmap(db, name.clone()).is_ok(){
             db.add_dir(if path == "/".to_string(){""}else{&path}, name.as_str());
             write(db);
+            webwrite(b"Ok", key, stream);
             return;
         }
         else{
@@ -353,24 +365,31 @@ fn cliright(db : &mut Jsondb, ans : String, stream: &mut TcpStream, key : Vec<u8
     }
     if ans.contains("rm"){
         let name = ans.replace("rm ", "");
+        if checkperm(&format!("{}/{}",path,name), "w", db) == false{webwrite(b"You have no permisiaons for this operation", key.clone(), stream);return;}
         db.deletebypath(&format!("{}/{}",path,name), name.contains(".ps"));
         write(db);
+        webwrite(b"Ok", key, stream);
         return;
     }
     if ans.contains("cd"){
         let name = ans.replace("cd ", "");
         if name == "/"{
+            if checkperm("", "r", db) == false{webwrite(b"You have no permisiaons for this operation", key.clone(), stream);return;}
             db.gotupath("");
         }
         if name.contains(".."){
+            if checkperm(&getpathwithoutps(path.clone(), 1), "r", db) == false{webwrite(b"You have no permisiaons for this operation", key.clone(), stream);return;}
             db.gotupath(&getpathwithoutps(path.clone(), 1));
         }
         if name.starts_with("/"){
+            if checkperm(&name, "r", db) == false{webwrite(b"You have no permisiaons for this operation", key.clone(), stream);return;}
             db.gotupath(&name);
         }
         else {
+            if checkperm(format!("{}/{}", path, name).as_str(), "r", db) == false{webwrite(b"You have no permisiaons for this operation", key.clone(), stream);return;}
             db.gotupath(format!("{}/{}", path, name).as_str());
         }
+        webwrite(b"Ok", key, stream);
         return;
     }
     if ans.contains("cat"){
@@ -379,13 +398,14 @@ fn cliright(db : &mut Jsondb, ans : String, stream: &mut TcpStream, key : Vec<u8
         if name.starts_with("/"){
             newpath = name.clone();
         }
-        match db.get_pass(&newpath){
-            Some(t) => {let mut password = Passcryptopass::from_json(t.clone());
+        match db.clone().get_pass(&newpath){
+            Some(t) => {if checkperm(&newpath, "r", db) == false{webwrite(b"You have no permisiaons for this operation", key.clone(), stream);return;};let mut password = Passcryptopass::from_json(t.clone());
                 webwrite(format!("\nTitle : {}\nUsername : {}\nPassword : {}\nUrl : {}\nNotes : {}", password.get_title(), password.get_username(),password.get_password(), password.get_url(), password.get_notes()).as_bytes(), key, stream);return;},
             None => {webwrite(b"Wrong path", key,stream);return;},
         }
     }
     if ans.contains("touch"){
+        if checkperm(if path == "/".to_string(){""}else{&path}, "w", db) == false{webwrite(b"You have no permisiaons for this operation", key.clone(), stream);return;};
         let mut name = ans.replace("touch ", "");
         while name.find("&").is_some(){
             let t = name.find("&").unwrap();
@@ -435,6 +455,7 @@ fn cliright(db : &mut Jsondb, ans : String, stream: &mut TcpStream, key : Vec<u8
             if check_hashmap(db, format!("{}.ps",oldtitle)).is_ok(){
                 db.add_pass(&path, newpass.to_json());
                 write(db);
+                webwrite(b"Ok", key, stream);
                 return;
             }
             else {
@@ -443,10 +464,15 @@ fn cliright(db : &mut Jsondb, ans : String, stream: &mut TcpStream, key : Vec<u8
             }
         }
         else {
-            webwrite(b"Invalid syntax", key, stream);
+            webwrite(b"Invalid syntax", key.clone(), stream);
         }
     }
+    else {
+        webwrite(b"Unknown", key, stream);
+        return;
+    }
 }
+
 fn check_hashmap(passs : &mut Jsondb, name: String) -> Result<bool , bool>{
     if passs.getall(None).unwrap().len() == 0{
         return Ok(true);
@@ -470,4 +496,9 @@ fn check_hashmap(passs : &mut Jsondb, name: String) -> Result<bool , bool>{
 }
 fn webwrite(data : &[u8], key : Vec<u8>, stream: &mut TcpStream){
     stream.write(&encrypt_thats_all(data.to_vec(), key));
+}
+fn checkperm(path : &str, perm : &str, jsaon : &mut Jsondb) -> bool{
+    let user = jsaon.user.clone();
+    if jsaon.get_perm(path, user.clone()) == String::from(""){return false;}
+    if jsaon.get_perm(path, user).contains(perm){return true;}else{return false;}
 }
