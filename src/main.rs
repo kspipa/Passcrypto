@@ -17,7 +17,7 @@ fn main(){
     }
     if gsd.len() > 1{
         if gsd[1] == "-h".to_string(){
-            println!("Passcrypto 1.0.0\nHow to use:\n    --server : turn in the server mode\n    --cli : use comandline like interface\n    --clinet : connect to the server using cli\n    --net : connect to the server using cursive");
+            println!("Passcrypto 1.0.0\nHow to use:\n    --server : turn in the server mode\n    --cli : use comandline like interface\n    --clinet : connect to the server using cli");
             return;
         }
         else if gsd[1] == "--server".to_string() {
@@ -30,12 +30,6 @@ fn main(){
         }
         else if gsd[1] == "--clinet" {
             cliconstart();
-            return;
-        }
-        else if gsd[1] == "--net"{
-            let mut siv = cursive::default();
-            startnet(&mut siv);
-            siv.run();
             return;
         }
     }
@@ -158,117 +152,7 @@ fn start(siv : &mut Cursive) {
             }
         }))))));
 }
-fn startnet(siv : &mut Cursive) {
-    siv.add_layer(ResizedView::with_fixed_size((40, 12), Dialog::around(LinearLayout::vertical()
-        .child(LinearLayout::horizontal().child(TextView::new("Ip : ")).child(EditView::new().with_name("path").fixed_size((15, 1))).child(DummyView).child(TextView::new("Port : ")).child(EditView::new().with_name("port").fixed_size((4, 1))))
-        .child(DummyView)
-        .child(DummyView)
-        .child(LinearLayout::horizontal().child(TextView::new("Username : ")).child(EditView::new().with_name("username").fixed_size((15, 1))))
-        .child(DummyView)
-        .child( LinearLayout::horizontal().child(TextView::new("Password : ")).child(EditView::new().secret().with_name("password").fixed_size((15, 1))))
-        .child(DummyView)
-        .child(DummyView)
-        .child(DummyView)
-        .child(LinearLayout::horizontal().child(Button::new("Quit", Cursive::quit)).child(ResizedView::with_fixed_size((26, 0),DummyView)).child(Button::new("Ok", move |x| {
-            let ip = x.call_on_name("path", |s : &mut EditView|{return s.get_content().clone()}).unwrap().to_string();
-            let port = x.call_on_name("port", |s : &mut EditView|{return s.get_content().clone()}).unwrap().to_string();
-            let username = x.call_on_name("username", |s : &mut EditView|{return s.get_content().clone()}).unwrap().to_string();
-            let password = x.call_on_name("password", |s : &mut EditView|{return s.get_content().clone()}).unwrap().to_string();
-            let addr = format!("{}:{}", ip, port);
-            let closekey = pass::fillwithrand();
-            let newclosekey = [vec![200, 215, 188, 50, 67, 90], closekey.clone()].concat();
-            let kk = pass::get_hash_from_pass([username.as_bytes(), password.as_bytes()].concat().as_mut_slice());
-            let authdata = encrypt_thats_all(newclosekey, kk);
-            let server: SocketAddr = addr.parse().expect("Unable to parse socket address");
-            let mut stream = TcpStream::connect(server).unwrap();
-            match client_auth(&mut stream, &authdata, &closekey){
-                2 => {x.add_layer(Dialog::info("Problems with server"));return;},
-                0 => {x.add_layer(Dialog::info("Problems with connect"));return;},
-                1 => {},
-                _ => {return;}
-            }
-            netright(x, &mut stream, &closekey);
 
-        }))))));
-}
-fn netright(x : &mut Cursive, stream: &mut TcpStream, newkey : &[u8]){
-    let sh = Dialog::around(EditView::new().on_submit(|kk: &mut Cursive, path: &str| 
-        {
-            if path.contains(".ps"){
-                if path.contains(".."){
-                    gotu(kk, &getpathwithoutps(path.to_string(), 3));
-                    seton(kk, &"".to_string());
-                    return;
-                }
-                let mut passs = kk.with_user_data(|hash :  &mut Jsondb| {return hash.clone();}).unwrap();
-                let neg = match passs.gotupath(path){
-                    Some(t) => t,
-                    None => {kk.add_layer(Dialog::info("Wrong path"));return;}
-                };
-                gotu(kk, &getpathwithoutps(path.to_string(), 1));
-                get_compass(kk, Some(Passcryptopass::from_json(neg.clone())), None)
-            }
-            else {
-                if path.contains(".."){
-                    gotu(kk, &getpathwithoutps(path.to_string(), 2));
-                    seton(kk, &"".to_string());
-                }
-                else {
-                    gotu(kk, path);
-                }
-            }
-        }
-    ).with_name("edit").fixed_size((80, 1)));
-    let menu = SelectView::<String>::new().on_submit(|s: &mut Cursive, xsize: &String| {
-        if !xsize.contains(".ps"){
-            seton(s, xsize);
-            let l = s.with_user_data(|hash :  &mut Jsondb| {return hash.positpath.clone();}).unwrap();
-            gotu(s, format!("{}/{}", l, xsize).as_str());
-        }
-        else {
-            seton(s, xsize);
-        }
-    }).on_select(|s: &mut Cursive, xsize: &String| {seton(s, xsize)}).with_name("select1").fixed_size((80, 100));
-    let passtextarea = Dialog::around(LinearLayout::vertical()
-        .child(LinearLayout::horizontal().child(TextView::new("Title    : ")).child(TextView::new("").with_name("title").fixed_size((80, 1))))
-        .child(DummyView.fixed_size((1, 1)))
-        .child(LinearLayout::horizontal().child(TextView::new("Username : ")).child(TextView::new("").with_name("username").fixed_size((80, 1))))
-        .child(LinearLayout::horizontal().child(TextView::new("Password : ")).child(TextView::new("").with_name("password").fixed_size((80, 1))))
-        .child(LinearLayout::horizontal().child(TextView::new("Url      : ")).child(TextView::new("").with_name("url").fixed_size((80, 1))))
-        .child(LinearLayout::horizontal().child(TextView::new("Notes    : ")).child(TextView::new("").with_name("notes").fixed_size((80, 1))))).fixed_size((110,20));
-    let dialog = Dialog::around(LinearLayout::vertical().child(Dialog::around(LinearLayout::vertical()
-        .child(ResizedView::with_fixed_size((5, 2), Button::new("Write new", move |g: &mut Cursive| {get_compass(g, None, None)})))
-        .child(ResizedView::with_fixed_size((5, 2), Button::new("Change", move |g| {
-            if get_selected_name(g).contains(".ps"){
-                let l = get_info_from_list(g);get_compass(g, Some(l), None)
-            }
-            else{
-                let l = get_selected_name(g);get_compass(g, None, Some(l))
-            }
-        })))
-        .child(ResizedView::with_fixed_size((5, 2), Button::new("Delete", move |g| {let mut hass = g.user_data::<Jsondb>().unwrap().clone();delete(g, &mut hass);g.set_user_data(hass)})))
-        .child(ResizedView::with_fixed_size((5, 2), Button::new("Quit", |g| {g.pop_layer();})))))).fixed_size((50, 100));
-    let firstmenu = SelectView::<String>::new().on_submit(|s: &mut Cursive, xsize: &String| {
-        let path = s.with_user_data(|hash :  &mut Jsondb| {return hash.positpath.clone();}).unwrap();
-        if xsize.contains(".."){
-            gotu(s, &getpathwithoutps(path.to_string(), 1));
-            seton(s, &"".to_string());
-        }
-        else {
-            s.call_on_name("edit", |a : &mut EditView|{a.set_content(path)});
-        }
-    }).with_name("firstmenu");
-    let liner = LinearLayout::horizontal().child(LinearLayout::vertical().child(sh).child(Dialog::around(LinearLayout::vertical().child(firstmenu).child(menu)))).child(passtextarea).child(dialog);
-    x.add_fullscreen_layer(liner);
-    let m = webwrite(x, stream, "ls", newkey.to_vec());
-    if m != "".to_string(){
-        for i in m.split("\n"){
-            add_in_list(i.to_string(), x)
-        }
-    }
-    
-
-}
 fn dont_right(ui : &mut Cursive){
     ui.add_layer(Dialog::info("Your password is wrong"));
 }
@@ -676,13 +560,10 @@ fn client_auth(stream: &mut TcpStream, authdata : &[u8], newkey : &[u8]) -> u8{
     if gg != "200".as_bytes(){
         return 0;
     }
-    println!("{:?}", newkey.len());
     stream.write(authdata);
     buf = [0; 2048];
     sixe = stream.read(&mut buf).unwrap();
-    println!("{}", sixe);
     if decrypt_thats_all(buf[0..sixe].to_vec(), newkey.to_vec())[0] != 200{return 2;};
-    println!("{:?}", newkey);
     return 1;
 }
 fn client(addr: &str, authdata : &[u8], newkey : &[u8]) {
@@ -703,12 +584,4 @@ fn client(addr: &str, authdata : &[u8], newkey : &[u8]) {
         println!("{}", decrmes);
         stream.flush();
     }
-}
-fn webwrite(s : &mut Cursive, stream: &mut TcpStream, command : &str, key : Vec<u8>) -> String{
-    let mut buf = [0;16384];
-    stream.write(encrypt_thats_all(command.as_bytes().to_vec(), key.clone()).as_mut_slice());
-    let sixe = stream.read(&mut buf).unwrap();
-    let decrmes = pass::from_vec_to_string(decrypt_thats_all(buf[0..sixe].to_vec(), key.to_vec()));
-    if decrmes == "You have no permisiaons for this operation".to_string(){s.add_layer(Dialog::info("You have no permisiaons for this operation"));return "".to_string();};
-    return decrmes;
 }

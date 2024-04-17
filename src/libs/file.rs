@@ -3,6 +3,8 @@ use std::io::prelude::*;
 use json::{self, JsonValue};
 use dirs;
 
+use crate::aes256;
+
 pub fn create_new_file(path : String){
     fs::File::create(path).unwrap();
 }
@@ -83,7 +85,7 @@ pub fn getpathwithoutps(path : String, leg : usize) -> String{
 }
 #[derive(Clone)]
 pub struct Jsondb{
-    json: JsonValue,
+    pub json: JsonValue,
     pub positpath: String,
     pub filepath: String,
     pub key: Vec<u8>,
